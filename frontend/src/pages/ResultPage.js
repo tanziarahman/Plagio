@@ -122,7 +122,7 @@ function ResultPage() {
                     const matchKey = `${file1}-${subIdx}`;
                     return (
                       <div key={subIdx} style={styles.similarityRow}>
-                        <span>{comp.file1} vs {comp.file2}</span>
+                        <span>{comp.file1} → {comp.file2}</span>
                         <span style={{ fontWeight: 600 }}>{comp.similarity}%</span>
                         <button
                           onClick={() => toggleMatchedLines(matchKey)}
