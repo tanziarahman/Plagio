@@ -134,11 +134,10 @@ function Dashboard() {
         const compareData = await compareRes.json();
         if (compareRes.ok) {
           setLastUploadId(uploadData.upload_id);
-          setTimeout(() => {
-            setAnalyzing(false);
-            setAnalysisDone(true);
-            fetchUploads();
-          }, 2000);
+          setAnalyzing(false);
+          setAnalysisDone(true);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // ✅ wait before fetching
+          fetchUploads();
         } else {
           alert(compareData.error || 'Comparison failed.');
           setAnalyzing(false);
