@@ -13,7 +13,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
 
-    uploads = relationship("Upload", back_populates="user")
+    uploads = relationship("Upload", back_populates="user",cascade="all, delete-orphan")
 
 
 class Upload(db.Model):
@@ -26,22 +26,28 @@ class Upload(db.Model):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="uploads")
-    files = relationship("File", back_populates="upload")
+    files = relationship("File", back_populates="upload", cascade="all, delete-orphan")
 
 
 class File(db.Model):
     __tablename__ = 'Files'
 
     file_id = Column(Integer, primary_key=True, autoincrement=True)
-    upload_id = Column(Integer, ForeignKey('Uploads.upload_id'), nullable=False)
+    upload_id = Column(Integer, ForeignKey('Uploads.upload_id', ondelete='CASCADE'), nullable=False)
     original_name = Column(String(255), nullable=False)
     stored_name = Column(String(255), nullable=False)
     file_path = Column(String(512), nullable=False)
     upload_time = Column(DateTime, default=datetime.utcnow)
 
     upload = relationship("Upload", back_populates="files")
-    comparisons_as_source = relationship("Comparison", foreign_keys='Comparison.file1_id', back_populates="file1")
-    comparisons_as_target = relationship("Comparison", foreign_keys='Comparison.file2_id', back_populates="file2")
+
+    comparisons_as_source = relationship("Comparison", foreign_keys='Comparison.file1_id',
+                                         back_populates="file1", cascade="all, delete-orphan")
+
+    comparisons_as_target = relationship("Comparison", foreign_keys='Comparison.file2_id',
+                                         back_populates="file2", cascade="all, delete-orphan")
+
+
 
 
 class Comparison(db.Model):
@@ -56,11 +62,11 @@ class Comparison(db.Model):
 
     file1 = relationship("File", foreign_keys=[file1_id], back_populates="comparisons_as_source")
     file2 = relationship("File", foreign_keys=[file2_id], back_populates="comparisons_as_target")
-    matches = relationship("MatchedLine", back_populates="comparison")
+    matches = relationship("MatchedLine", back_populates="comparison", cascade="all, delete-orphan")
 
-    __table_args__ = (
-        UniqueConstraint('file1_id', 'file2_id', name='unique_pair'),
-    )
+    # # __table_args__ = (
+    # #     UniqueConstraint('file1_id', 'file2_id', name='unique_pair'),
+    # )
 
 
 class MatchedLine(db.Model):
