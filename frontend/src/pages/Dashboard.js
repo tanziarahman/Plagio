@@ -244,7 +244,7 @@ function Dashboard() {
                   </button>
                   <button
                     onClick={() => handleDelete(entry.upload_id)}
-                    style={{ color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}
+                    style={{ color: '#ef060eff', border: 'none', background: 'none', cursor: 'pointer' }}
                   >
                     🗑️
                   </button>
