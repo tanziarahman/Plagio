@@ -251,7 +251,7 @@ const styles = {
   backButton: {
     backgroundColor: 'transparent',
     border: 'none',
-    color: '#7c3aed',
+    color: '#667eea',
     cursor: 'pointer',
     fontSize: '1rem',
     fontWeight: '600',
