@@ -40,11 +40,23 @@ function Dashboard() {
       });
       if (res.ok) {
         const data = await res.json();
-        const formatted = data.uploads.map(up => ({
-          name: up.session_name,
-          time: new Date(up.created_at).toLocaleString(),
-          upload_id: up.upload_id
-        }));
+        const formatted = data.uploads.map(up => {
+          const utcDate = new Date(up.created_at);
+          const bdTime = new Date(utcDate.getTime() + 6 * 60 * 60 * 1000);
+          const options = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          };
+          return {
+            name: up.session_name,
+            time: bdTime.toLocaleString('en-US', options),
+            upload_id: up.upload_id
+          };
+        });
         setAnalysisResults(formatted);
       }
     } catch (err) {
@@ -73,7 +85,6 @@ function Dashboard() {
     const newFiles = Array.from(e.target.files);
     const validFiles = newFiles.filter(f => ['txt', 'docx'].includes(f.name.split('.').pop().toLowerCase()));
     if (validFiles.length < newFiles.length) alert('Only .txt and .docx files are allowed.');
-
     const unique = Array.from(new Map([...selectedFiles, ...validFiles].map(f => [f.name + f.lastModified, f])).values());
     setSelectedFiles(unique);
   };
@@ -91,7 +102,6 @@ function Dashboard() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert("Upload deleted successfully.");
         setAnalysisResults(prev => prev.filter(item => item.upload_id !== upload_id));
       } else {
         alert(data.error || 'Deletion failed.');
@@ -124,15 +134,6 @@ function Dashboard() {
       const uploadData = await uploadRes.json();
 
       if (uploadRes.ok && uploadData.upload_id) {
-        setAnalysisResults(prev => [
-          {
-            name: trimmed,
-            time: new Date().toLocaleString(),
-            upload_id: uploadData.upload_id
-          },
-          ...prev
-        ]);
-
         const compareRes = await fetch('http://localhost:5000/compare', {
           method: 'POST',
           credentials: 'include',
