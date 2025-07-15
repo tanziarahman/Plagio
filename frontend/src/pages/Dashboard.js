@@ -124,7 +124,6 @@ function Dashboard() {
       const uploadData = await uploadRes.json();
 
       if (uploadRes.ok && uploadData.upload_id) {
-        // 🟣 FIX: Immediately show analysis in the right box with current time
         setAnalysisResults(prev => [
           {
             name: trimmed,
@@ -147,7 +146,7 @@ function Dashboard() {
           setTimeout(() => {
             setAnalyzing(false);
             setAnalysisDone(true);
-            fetchUploads(); // optional refresh from server
+            fetchUploads();
           }, 2000);
         } else {
           alert(compareData.error || 'Comparison failed.');
@@ -178,7 +177,6 @@ function Dashboard() {
       </div>
 
       <div style={styles.split}>
-        {/* Left Section */}
         <div style={styles.left}>
           <h1 style={styles.heading}>PLAGIO</h1>
           <h2 style={styles.subheading}>Comprehensive plagiarism detection</h2>
@@ -225,7 +223,6 @@ function Dashboard() {
           {analyzing && <p style={{ marginTop: 10, color: '#6b7280' }}>Analyzing {selectedFiles.length} file(s)...</p>}
         </div>
 
-        {/* Right Section */}
         <div style={styles.right}>
           <div style={{ marginTop: '130px' }}>
             <h2 style={styles.textImportant}>Previous Analysis Results</h2>
@@ -267,8 +264,6 @@ function Dashboard() {
     </div>
   );
 }
-
-
 
 const styles = {
   wrapper: {
