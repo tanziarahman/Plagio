@@ -124,6 +124,16 @@ function Dashboard() {
       const uploadData = await uploadRes.json();
 
       if (uploadRes.ok && uploadData.upload_id) {
+        // 🟣 FIX: Immediately show analysis in the right box with current time
+        setAnalysisResults(prev => [
+          {
+            name: trimmed,
+            time: new Date().toLocaleString(),
+            upload_id: uploadData.upload_id
+          },
+          ...prev
+        ]);
+
         const compareRes = await fetch('http://localhost:5000/compare', {
           method: 'POST',
           credentials: 'include',
@@ -134,10 +144,11 @@ function Dashboard() {
         const compareData = await compareRes.json();
         if (compareRes.ok) {
           setLastUploadId(uploadData.upload_id);
-          setAnalyzing(false);
-          setAnalysisDone(true);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // ✅ wait before fetching
-          fetchUploads();
+          setTimeout(() => {
+            setAnalyzing(false);
+            setAnalysisDone(true);
+            fetchUploads(); // optional refresh from server
+          }, 2000);
         } else {
           alert(compareData.error || 'Comparison failed.');
           setAnalyzing(false);
