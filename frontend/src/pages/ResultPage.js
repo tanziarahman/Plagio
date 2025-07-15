@@ -5,7 +5,6 @@ function ResultPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Get upload_id from location.state instead of URL param
   const upload_id = location.state?.upload_id || null;
 
   const [userEmail, setUserEmail] = useState('');
@@ -149,6 +148,16 @@ function ResultPage() {
             </div>
           ))
         )}
+
+        {/* Back to Dashboard button */}
+        <div style={{ marginTop: '30px' }}>
+          <button
+            onClick={() => navigate('/dashboard')}
+            style={styles.backButton}
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -238,6 +247,17 @@ const styles = {
     marginTop: '10px',
     paddingLeft: '20px',
     color: '#4b5563',
+  },
+  backButton: {
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#7c3aed',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    fontWeight: '600',
+    padding: 0,
+    fontFamily: 'Poppins, sans-serif',
+    userSelect: 'none',
   },
 };
 
