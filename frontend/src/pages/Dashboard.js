@@ -124,11 +124,11 @@ function Dashboard() {
       const uploadData = await uploadRes.json();
 
       if (uploadRes.ok && uploadData.upload_id) {
-        // 🟣 FIX: Immediately show analysis in the right box with current time
+        // ✅ Fixed: Use backend-provided created_at for correct time
         setAnalysisResults(prev => [
           {
             name: trimmed,
-            time: new Date().toLocaleString(),
+            time: new Date(uploadData.created_at).toLocaleString(),
             upload_id: uploadData.upload_id
           },
           ...prev
@@ -147,7 +147,7 @@ function Dashboard() {
           setTimeout(() => {
             setAnalyzing(false);
             setAnalysisDone(true);
-            fetchUploads(); // optional refresh from server
+            fetchUploads(); // optional refresh
           }, 2000);
         } else {
           alert(compareData.error || 'Comparison failed.');
