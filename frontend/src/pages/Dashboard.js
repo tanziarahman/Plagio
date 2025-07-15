@@ -204,7 +204,7 @@ function Dashboard() {
             <button style={styles.analyzeButton} onClick={handleAnalyze} disabled={analyzing}>Analyze</button>
             {analysisDone && lastUploadId && (
               <button
-                onClick={() => navigate(`/result?upload_id=${lastUploadId}`)}
+                onClick={() => navigate('/result', { state: { upload_id: lastUploadId } })}
                 style={styles.analyzeButton}
               >
                 View Result →
@@ -237,16 +237,16 @@ function Dashboard() {
                 <span>{entry.time}</span>
                 <span>
                   <button
-                    onClick={() => navigate(`/result?upload_id=${entry.upload_id}`)}
+                    onClick={() => navigate('/result', { state: { upload_id: entry.upload_id } })}
                     style={{ color: '#4f46e5', border: 'none', background: 'none', cursor: 'pointer', marginRight: '10px' }}
                   >
                     View →
                   </button>
                   <button
                     onClick={() => handleDelete(entry.upload_id)}
-                    style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}
+                    style={{ color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}
                   >
-                    🗑
+                    🗑️
                   </button>
                 </span>
               </div>
@@ -404,15 +404,4 @@ const styles = {
   },
 };
 
-
 export default Dashboard;
-
-
-
-
-
-
-
-
-
-

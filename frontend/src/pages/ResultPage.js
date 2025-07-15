@@ -5,8 +5,8 @@ function ResultPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const queryParams = new URLSearchParams(location.search);
-  const upload_id = queryParams.get('upload_id');
+  // Get upload_id from location.state instead of URL param
+  const upload_id = location.state?.upload_id || null;
 
   const [userEmail, setUserEmail] = useState('');
   const [comparisons, setComparisons] = useState([]);
@@ -242,10 +242,3 @@ const styles = {
 };
 
 export default ResultPage;
-
-
-
-
-
-
-
