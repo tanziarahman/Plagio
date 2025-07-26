@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import { useNavigate,useLocation,Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false); // <-- Added this line
+  const [remember, setRemember] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const location = useLocation();
   const [messages, setMessages] = useState([]);
   const navigate = useNavigate();
 
-    React.useEffect(() => {
+  React.useEffect(() => {
     if (location.state?.message) {
       setMessages([location.state.message]);
     }
-   }, [location.state]);
+  }, [location.state]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,14 +23,13 @@ export default function Login() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, remember }), // sending remember if you want to handle it backend
+      body: JSON.stringify({ email, password, remember }),
     });
 
     const data = await response.json();
     console.log("Login response:", data);
 
     if (response.ok) {
-      // Login successful → go to dashboard
       navigate('/dashboard');
     } else {
       setMessages([data.message || 'Login failed.']);
@@ -45,65 +45,68 @@ export default function Login() {
 
         {messages.length > 0 &&
           messages.map((msg, idx) => (
-            <div key={idx} className="alert alert-warning" style={styles.alert}>
+            <div key={idx} style={styles.alert}>
               {msg}
             </div>
           ))}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-floating mb-3">
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <div style={styles.formGroup}>
+            <label htmlFor="email" style={styles.label}>Email address</label>
             <input
               type="email"
               name="email"
               id="email"
               placeholder="Email"
-              className="form-control"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={styles.formControl}
+              style={styles.input}
             />
-            <label htmlFor="email">Email address</label>
           </div>
 
-          <div className="form-floating mb-3">
+          <div style={{ ...styles.formGroup, position: 'relative' }}>
+            <label htmlFor="password" style={styles.label}>Password</label>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               id="password"
               placeholder="Password"
-              className="form-control"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={styles.formControl}
+              style={styles.input}
             />
-            <label htmlFor="password">Password</label>
+            <button 
+              type="button" 
+              onClick={() => setShowPassword(!showPassword)}
+              style={styles.togglePassword}
+            >
+              {showPassword ? '👁️‍🗨️' : '👁️'}
+            </button>
           </div>
 
-          <div className="form-check mb-3">
+          <div style={styles.checkboxContainer}>
             <input
               type="checkbox"
-              className="form-check-input"
               name="remember"
               id="remember"
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
+              style={styles.checkbox}
             />
-            <label className="form-check-label small" htmlFor="remember" style={{ color: '#6c6c80' }}>
+            <label htmlFor="remember" style={styles.checkboxLabel}>
               Remember me
             </label>
           </div>
 
-          <div className="d-grid mb-3">
-            <button type="submit" className="btn btn-dark" style={styles.btnDark}>
-              Login
-            </button>
-          </div>
+          <button type="submit" style={styles.submitButton}>
+            Login
+          </button>
 
-          <div className="text-center small">
+          <div style={styles.registerLink}>
             Don't have an account?{' '}
-            <Link to="/register" style={{ color: '#764ba2', fontWeight: 600, textDecoration: 'none' }}>
+            <Link to="/register" style={styles.registerLinkText}>
               Register
             </Link>
           </div>
@@ -115,8 +118,7 @@ export default function Login() {
 
 const styles = {
   body: {
-    // background: 'linear-gradient(to right, #3f87a6, #ebf8e1, #f69d3c)',
-        background: `
+    background: `
       linear-gradient(to bottom, 
         rgba(230, 240, 255, 0.3) 0%, 
         #f8f9fa 40%, 
@@ -128,38 +130,112 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    padding: '20px',
   },
   card: {
-    borderRadius: '1rem',
-    background: 'linear-gradient(145deg, #ffffffdd, #f1f3f5dd)',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-    padding: '2rem',
+    borderRadius: '12px',
+    backgroundColor: 'white',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    padding: '30px',
     width: '100%',
-    maxWidth: '400px',
+    maxWidth: '420px',
   },
   h3: {
     color: '#4b3e84',
-    fontWeight: 700,
-    marginBottom: '1.5rem',
+    fontWeight: '600',
+    marginBottom: '24px',
     textAlign: 'center',
-    letterSpacing: '1.2px',
-  },
-  formControl: {
-    borderRadius: '0.5rem',
-    border: '1.5px solid #ccc',
-    transition: 'border-color 0.3s ease',
-    outline: 'none',
+    fontSize: '24px',
   },
   alert: {
-    fontSize: '0.9rem',
-    borderRadius: '0.5rem',
-    marginBottom: '1rem',
+    backgroundColor: '#fff3cd',
+    color: '#856404',
+    padding: '12px',
+    borderRadius: '6px',
+    marginBottom: '20px',
+    border: '1px solid #ffeeba',
+    fontSize: '14px',
   },
-  btnDark: {
-    background: 'linear-gradient(45deg, #764ba2, #667eea)',
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  formGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#495057',
+  },
+  input: {
+    padding: '12px',
+    borderRadius: '6px',
+    border: '1px solid #ced4da',
+    fontSize: '14px',
+    transition: 'border-color 0.2s',
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box',
+    ':focus': {
+      borderColor: '#764ba2',
+      boxShadow: '0 0 0 2px rgba(118, 75, 162, 0.2)',
+    },
+  },
+  togglePassword: {
+    position: 'absolute',
+    right: '10px',
+    top: '34px',
+    background: 'none',
     border: 'none',
-    fontWeight: 600,
-    transition: 'background 0.3s ease',
-    borderRadius: '0.5rem',
+    cursor: 'pointer',
+    fontSize: '16px',
+  },
+  checkboxContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '10px',
+  },
+  checkbox: {
+    width: '16px',
+    height: '16px',
+    accentColor: '#764ba2',
+    cursor: 'pointer',
+  },
+  checkboxLabel: {
+    fontSize: '14px',
+    color: '#495057',
+    cursor: 'pointer',
+  },
+  submitButton: {
+    padding: '12px',
+    backgroundColor: '#764ba2',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+    ':hover': {
+      backgroundColor: '#5a3a7a',
+    },
+  },
+  registerLink: {
+    textAlign: 'center',
+    fontSize: '14px',
+    marginTop: '16px',
+    color: '#495057',
+  },
+  registerLinkText: {
+    color: '#764ba2',
+    fontWeight: '500',
+    textDecoration: 'none',
+    ':hover': {
+      textDecoration: 'underline',
+    },
   },
 };

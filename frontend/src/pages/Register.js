@@ -1,30 +1,130 @@
+
 import React, { useState } from 'react';
-import { useNavigate,Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function Register() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [messages, setMessages] = useState([]);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    verificationCode: ''
+  });
+  const [errors, setErrors] = useState({
+    email: false,
+    password: false,
+    verificationCode: false,
+    message: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isCodeSent, setIsCodeSent] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Special handling for password field
+    if (name === 'password') {
+      const isPasswordValid = value.length >= 8 && value.length <= 20;
+      setErrors(prev => ({
+        ...prev,
+        password: value ? !isPasswordValid : false,
+        message: ''
+      }));
+    } else {
+      // Clear error when typing other fields
+      setErrors(prev => ({
+        ...prev,
+        [name]: false,
+        message: ''
+      }));
+    }
+  };
+
+  const validateFields = () => {
+    const isPasswordValid = formData.password.length >= 8 && formData.password.length <= 20;
+    
+    const newErrors = {
+      email: !formData.email,
+      password: !formData.password || !isPasswordValid,
+      verificationCode: !formData.verificationCode,
+      message: ''
+    };
+    
+    setErrors(newErrors);
+    return !Object.values(newErrors).some(error => error);
+  };
+
+  const handleSendCode = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.email) {
+      setErrors({ ...errors, email: true, message: 'Email is required' });
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrors({ ...errors, email: true, message: data.message || 'Failed to send code' });
+        return;
+      }
+
+      setIsCodeSent(true);
+      setErrors({ ...errors, email: false, message: '' });
+    } catch (error) {
+      setErrors({ ...errors, email: true, message: 'Network error. Please try again.' });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateFields()) return;
 
-    const response = await fetch('http://localhost:5000/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email, password }),
-    });
+    setIsSubmitting(true);
 
-    const data = await response.json();
+    try {
+      const response = await fetch('http://localhost:5000/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          code: formData.verificationCode
+        }),
+      });
 
-    if (response.status === 201) {
-      navigate('/login', { state: { message: 'Account created successfully. Please login.' } });
-    } else {
-      setMessages([data.message || 'Registration failed.']);
-      setEmail('');
-      setPassword('');
+      const data = await response.json();
+
+      if (response.status === 201) {
+        navigate('/dashboard');
+      } else {
+        setErrors({
+          ...errors,
+          verificationCode: true,
+          message: data.message || 'Registration failed. Please try again.'
+        });
+      }
+    } catch (error) {
+      setErrors({
+        ...errors,
+        verificationCode: true,
+        message: 'Network error. Please try again.'
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -33,53 +133,118 @@ export default function Register() {
       <div style={styles.card}>
         <h3 style={styles.h3}>Create Account</h3>
 
-        {messages.length > 0 &&
-          messages.map((msg, idx) => (
-            <div key={idx} className="alert alert-warning" style={styles.alert}>
-              {msg}
-            </div>
-          ))}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-floating mb-3">
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <div style={styles.formGroup}>
+            <label htmlFor="email" style={styles.label}>Email address</label>
             <input
               type="email"
               name="email"
               id="email"
-              placeholder="Email"
-              className="form-control"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={styles.formControl}
+              value={formData.email}
+              onChange={handleChange}
+              style={{
+                ...styles.input,
+                borderColor: errors.email ? '#dc3545' : '#ced4da',
+              }}
+              placeholder="Enter your email"
             />
-            <label htmlFor="email">Email address</label>
+            {errors.email && (
+              <div style={styles.errorContainer}>
+                <svg style={styles.errorIcon} viewBox="0 0 20 20">
+                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+                </svg>
+                <span style={styles.errorText}>{errors.message}</span>
+              </div>
+            )}
           </div>
 
-          <div className="form-floating mb-3">
+          <div style={{ ...styles.formGroup, position: 'relative' }}>
+            <label htmlFor="password" style={styles.label}>Password</label>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               id="password"
-              placeholder="Password"
-              className="form-control"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={styles.formControl}
+              value={formData.password}
+              onChange={handleChange}
+              style={{
+                ...styles.input,
+                borderColor: errors.password ? '#dc3545' : '#ced4da',
+              }}
+              placeholder="Enter your password (8-20 characters)"
             />
-            <label htmlFor="password">Password</label>
-          </div>
-
-          <div className="d-grid mb-3">
-            <button type="submit" className="btn btn-dark" style={styles.btnDark}>
-              Register
+            <button 
+              type="button" 
+              onClick={() => setShowPassword(!showPassword)}
+              style={styles.togglePassword}
+            >
+              {showPassword ? '👁️‍🗨️' : '👁️'}
             </button>
+            {errors.password && (
+              <div style={styles.errorContainer}>
+                <svg style={styles.errorIcon} viewBox="0 0 20 20">
+                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+                </svg>
+                <span style={styles.errorText}>
+                  {!formData.password ? 'Password is required' : 
+                   formData.password.length < 8 ? 'Password must be at least 8 characters' :
+                   'Password cannot exceed 20 characters'}
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className="text-center small">
+          <div style={styles.formGroup}>
+            <label htmlFor="verificationCode" style={styles.label}>Verification Code</label>
+            <div style={styles.codeContainer}>
+              <input
+                type="text"
+                name="verificationCode"
+                id="verificationCode"
+                value={formData.verificationCode}
+                onChange={handleChange}
+                style={{
+                  ...styles.input,
+                  borderColor: errors.verificationCode ? '#dc3545' : '#ced4da',
+                  flex: 1,
+                }}
+                placeholder="Enter 6-digit code"
+              />
+              <button
+                type="button"
+                onClick={handleSendCode}
+                style={{
+                  ...styles.sendCodeButton,
+                  backgroundColor: isCodeSent ? '#e9ecef' : '#f8f9fa',
+                  color: isCodeSent ? '#6c757d' : '#764ba2',
+                  borderColor: isCodeSent ? '#dee2e6' : '#764ba2',
+                  cursor: isCodeSent ? 'not-allowed' : 'pointer'
+                }}
+                disabled={isCodeSent}
+              >
+                {isCodeSent ? 'Sent' : 'Send Code'}
+              </button>
+            </div>
+            {errors.verificationCode && (
+              <div style={styles.errorContainer}>
+                <svg style={styles.errorIcon} viewBox="0 0 20 20">
+                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+                </svg>
+                <span style={styles.errorText}>{errors.message}</span>
+              </div>
+            )}
+          </div>
+
+          <button 
+            type="submit" 
+            style={styles.submitButton}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Processing...' : 'Register'}
+          </button>
+
+          <div style={styles.loginLinkContainer}>
             Already have an account?{' '}
-            <Link to="/login" style={{ color: '#764ba2', fontWeight: 600, textDecoration: 'none' }}>
+            <Link to="/login" style={styles.loginLink}>
               Login
             </Link>
           </div>
@@ -91,7 +256,7 @@ export default function Register() {
 
 const styles = {
   body: {
-        background: `
+    background: `
       linear-gradient(to bottom, 
         rgba(230, 240, 255, 0.3) 0%, 
         #f8f9fa 40%, 
@@ -103,38 +268,121 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    padding: '20px',
   },
   card: {
-    borderRadius: '1rem',
-    background: 'linear-gradient(145deg, #ffffffdd, #f1f3f5dd)',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-    padding: '2.5rem',
+    borderRadius: '12px',
+    backgroundColor: 'white',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    padding: '30px',
     width: '100%',
-    maxWidth: '400px',
+    maxWidth: '420px',
   },
   h3: {
     color: '#4b3e84',
-    fontWeight: 700,
-    marginBottom: '2rem',
+    fontWeight: '600',
+    marginBottom: '24px',
     textAlign: 'center',
-    letterSpacing: '1.2px',
+    fontSize: '24px',
   },
-  formControl: {
-    borderRadius: '0.5rem',
-    border: '1.5px solid #ccc',
-    transition: 'border-color 0.3s ease',
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  formGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#495057',
+  },
+  input: {
+    padding: '12px',
+    borderRadius: '6px',
+    border: '1px solid #ced4da',
+    fontSize: '14px',
+    transition: 'border-color 0.2s',
     outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box',
   },
-  alert: {
-    fontSize: '0.9rem',
-    borderRadius: '0.5rem',
-    marginBottom: '1rem',
+  errorContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    marginTop: '4px',
   },
-  btnDark: {
-    background: 'linear-gradient(45deg, #764ba2, #667eea)',
+  errorIcon: {
+    width: '16px',
+    height: '16px',
+    fill: '#dc3545',
+    marginRight: '6px',
+  },
+  errorText: {
+    color: '#dc3545',
+    fontSize: '13px',
+    fontWeight: '400',
+  },
+  togglePassword: {
+    position: 'absolute',
+    right: '10px',
+    top: '34px',
+    background: 'none',
     border: 'none',
-    fontWeight: 600,
-    transition: 'background 0.3s ease',
-    borderRadius: '0.5rem',
+    cursor: 'pointer',
+    fontSize: '16px',
+  },
+  codeContainer: {
+    display: 'flex',
+    gap: '10px',
+  },
+  sendCodeButton: {
+    padding: '0 16px',
+    backgroundColor: '#f8f9fa',
+    border: '1px solid #764ba2',
+    color: '#764ba2',
+    borderRadius: '6px',
+    fontWeight: '500',
+    transition: 'all 0.2s',
+    whiteSpace: 'nowrap',
+    ':hover': {
+      backgroundColor: '#764ba2',
+      color: 'white',
+    },
+  },
+  submitButton: {
+    padding: '12px',
+    backgroundColor: '#764ba2',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+    marginTop: '10px',
+    ':hover': {
+      backgroundColor: '#5a3a7a',
+    },
+    ':disabled': {
+      backgroundColor: '#a78bc1',
+      cursor: 'not-allowed',
+    },
+  },
+  loginLinkContainer: {
+    textAlign: 'center',
+    fontSize: '14px',
+    marginTop: '16px',
+    color: '#495057',
+  },
+  loginLink: {
+    color: '#764ba2',
+    fontWeight: '500',
+    textDecoration: 'none',
+    ':hover': {
+      textDecoration: 'underline',
+    },
   },
 };
