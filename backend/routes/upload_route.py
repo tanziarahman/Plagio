@@ -1,108 +1,97 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
-from models import db, Upload, File
 from werkzeug.utils import secure_filename
-import os, uuid
 from datetime import datetime
-from flask import current_app
+import os
+from models import db, Upload, File
 
-upload_bp = Blueprint('upload', __name__)
+upload_bp = Blueprint("upload", __name__)
 
-       
+ALLOWED_EXTENSIONS_BY_TYPE = {
+    "text": {"txt", "docx"},
+    "code": {"py", "java", "cpp", "c", "js", "ts", "rb", "php"},
+    "ai": {"txt", "docx"}
+}
 
-ALLOWED_EXTENSIONS = {'txt', 'docx'}
+def allowed_file(filename, upload_type):
+    if "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[1].lower()
+    return ext in ALLOWED_EXTENSIONS_BY_TYPE.get(upload_type, set())
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
-
-@upload_bp.route('/upload', methods=['POST'])
+@upload_bp.route("/upload", methods=["POST"])
 @login_required
 def upload_files():
-    if 'files' not in request.files:
-        return jsonify({'error': 'No files part'}), 400
+    upload_type = request.form.get("scanType")
+    if upload_type not in ALLOWED_EXTENSIONS_BY_TYPE:
+        return jsonify({"error": f"Invalid upload_type: {upload_type}"}), 400
 
-    files = request.files.getlist('files')
-    if not files or all(file.filename == '' for file in files):
-        return jsonify({'error': 'No selected files'}), 400
+    uploaded_files = request.files.getlist("files")
+    if not uploaded_files:
+        return jsonify({"error": "No files uploaded"}), 400
 
-    extensions = set()
-    valid_files = []
-
-    for file in files:
-        if file and allowed_file(file.filename):
-            ext = file.filename.rsplit('.', 1)[1].lower()
-            extensions.add(ext)
-            valid_files.append(file)
-        else:
+    file_extensions = set()
+    for file in uploaded_files:
+        if not allowed_file(file.filename, upload_type):
             return jsonify({
-                'error': f'Invalid file type: {file.filename}',
-                'allowed_extensions': list(ALLOWED_EXTENSIONS)
+                "error": f"Invalid file type: {file.filename}",
+                "allowed_extensions": list(ALLOWED_EXTENSIONS_BY_TYPE[upload_type])
             }), 400
+        ext = file.filename.rsplit(".", 1)[1].lower()
+        file_extensions.add(ext)
 
-    if len(extensions) > 1:
+    if len(file_extensions) > 1:
         return jsonify({
-            'error': 'All files must have the same extension',
-            'detected_extensions': list(extensions)
+            "error": "All files must have the same extension",
+            "detected_extensions": list(file_extensions)
         }), 400
 
-    # Get upload type from form, default to 'text' if not provided
-    upload_type = request.form.get('upload_type', 'text').lower()
-    if upload_type not in ('text', 'code', 'ai'):
-        return jsonify({
-            'error': f"Invalid upload_type: {upload_type}",
-            'allowed_types': ['text', 'code', 'ai']
-        }), 400
-
-    # Create Upload record
     new_upload = Upload(
         user_id=current_user.id,
-        session_name=request.form.get('analysis_name') or f"Upload_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
-        comparison_type=upload_type,  
+        session_name=request.form.get("analysis_name")
+        or f"Upload_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+        upload_type=upload_type,
         created_at=datetime.utcnow()
     )
     db.session.add(new_upload)
-    db.session.flush()  
+    db.session.commit()
+
+    upload_dir = os.path.join(
+        current_app.config.get("UPLOAD_FOLDER", "uploads"),
+        f"user_{current_user.id}",
+        f"session_{new_upload.upload_id}"
+    )
+    os.makedirs(upload_dir, exist_ok=True)
 
     saved_files = []
 
-    for file in valid_files:
+    for file in uploaded_files:
         filename = secure_filename(file.filename)
-        unique_id = uuid.uuid4().hex
-        new_filename = f"{unique_id}_{filename}"
+        file_path = os.path.join(upload_dir, filename)
+        file.save(file_path)
 
-        user_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], f"user_{current_user.id}")
-        session_folder = os.path.join(user_folder, f"session_{new_upload.upload_id}")
-        os.makedirs(session_folder, exist_ok=True)
-
-        save_path = os.path.join(session_folder, new_filename)
-        file.save(save_path)
-
-        new_file = File(
+        file_obj = File(
             upload_id=new_upload.upload_id,
-            original_name=filename,
-            stored_name=new_filename,
-            file_path=save_path,
+            original_name=file.filename,
+            stored_name=filename,
+            file_path=file_path,
             upload_time=datetime.utcnow()
         )
-        db.session.add(new_file)
+        db.session.add(file_obj)
+        db.session.flush()  
 
         saved_files.append({
-            'file_id': new_file.file_id, 
-            'original_name': filename,
-            'stored_name': new_filename,
-            'upload_id': new_upload.upload_id
+            "file_id": file_obj.file_id,
+            "original_name": file.filename,
+            "stored_name": filename,
+            "file_path": file_path
         })
 
     db.session.commit()
 
-    for i, file_obj in enumerate(new_upload.files):
-        saved_files[i]['file_id'] = file_obj.file_id
-
     return jsonify({
-        'message': 'Files uploaded successfully',
-        'upload_id': new_upload.upload_id,
-        'upload_type': new_upload.comparison_type,
-        'files': saved_files
+        "upload_id": new_upload.upload_id,
+        "upload_type": upload_type,
+        "files": saved_files
     }), 201
