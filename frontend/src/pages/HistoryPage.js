@@ -33,6 +33,10 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
+  const handleNewScan = () => {
+    navigate('/plagio-dashboard'); // Navigate to PlagioDashboard
+  };
+
   const styles = {
     dashboard: {
       display: 'flex',
@@ -235,7 +239,7 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
           </div>
           <div 
             style={styles.menuItem}
-            onClick={() => navigate('/operations')}
+            onClick={() => navigate('/plagio-dashboard')} // Changed to navigate to dashboard
           >
             {sidebarCollapsed ? 'N' : 'New Scan'}
           </div>
@@ -276,7 +280,7 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
           </div>
           <button 
             style={styles.newScanButton} 
-            onClick={() => navigate('/operations')}
+            onClick={handleNewScan} // Updated to use handleNewScan function
           >
             + New Scan
           </button>

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiChevronLeft, FiChevronRight, FiTrash2, FiUpload } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiTrash2, FiUpload, FiCheckCircle } from 'react-icons/fi';
 
-const PlagioDashboard = ({ userEmail = "user@example.com" }) => {
+const PlagioDashboard = ({ userEmail = "user@example.com", defaultScanType = null }) => {
+  // State Management
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [analysisName, setAnalysisName] = useState('');
@@ -10,86 +11,136 @@ const PlagioDashboard = ({ userEmail = "user@example.com" }) => {
   const [dragActive, setDragActive] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [analysisError, setAnalysisError] = useState('');
+  const [scanType, setScanType] = useState(defaultScanType);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanComplete, setScanComplete] = useState(false);
+  const [showFileWarning, setShowFileWarning] = useState(false);
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
+  // Embedded CSS Animation
+  const GlobalStyles = () => (
+    <style>
+      {`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}
+    </style>
+  );
+
+  // Custom Spinner Component
+  const LoadingSpinner = () => (
+    <div style={{
+      display: 'inline-block',
+      width: '40px',
+      height: '40px',
+      border: '3px solid rgba(26, 188, 156, 0.3)',
+      borderTopColor: '#1abc9c',
+      borderRadius: '50%',
+      animation: 'spin 1s linear infinite'
+    }} />
+  );
+
+  // Core Functions
+  const toggleSidebar = () => setSidebarCollapsed(!sidebarCollapsed);
+
+  const isValidFile = (file) => {
+    const extension = file.name.split('.').pop().toLowerCase();
+    if (scanType === 'ai' || scanType === 'text') return ['txt', 'docx'].includes(extension);
+    if (scanType === 'code') return ['c', 'cpp'].includes(extension);
+    return false;
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).filter(newFile => 
+    if (!scanType) {
+      setUploadError('Please select a scan type first');
+      return;
+    }
+
+    if (e.target.files?.length > 0) {
+      const validFiles = Array.from(e.target.files).filter(isValidFile);
+      const invalidFiles = Array.from(e.target.files).filter(f => !isValidFile(f));
+      
+      if (invalidFiles.length > 0) {
+        setUploadError(`Invalid file type. Allowed: ${scanType === 'code' ? '.c, .cpp' : '.txt, .docx'}`);
+      } else {
+        setUploadError('');
+      }
+
+      const newFiles = validFiles.filter(newFile => 
         !files.some(existingFile => 
           existingFile.name === newFile.name && existingFile.size === newFile.size
         )
       );
       
-      if (newFiles.length < e.target.files.length) {
-        setUploadError('Some files were not added because they are duplicates');
-      } else {
-        setUploadError('');
+      if (newFiles.length < validFiles.length) {
+        setUploadError(prev => prev ? `${prev}. Note: Duplicate files ignored` : 'Note: Duplicate files ignored');
       }
       
-      setFiles([...files, ...newFiles]);
+      const updatedFiles = [...files, ...newFiles];
+      setFiles(updatedFiles);
+      
+      // FIXED: Only show the warning message, don't set upload error
+      if ((scanType === 'text' || scanType === 'code') && updatedFiles.length === 1) {
+        setShowFileWarning(true);
+      } else {
+        setShowFileWarning(false);
+      }
     }
   };
 
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
+    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const newFiles = Array.from(e.dataTransfer.files).filter(newFile => 
-        !files.some(existingFile => 
-          existingFile.name === newFile.name && existingFile.size === newFile.size
-        )
-      );
-      
-      if (newFiles.length < e.dataTransfer.files.length) {
-        setUploadError('Some files were not added because they are duplicates');
-      } else {
-        setUploadError('');
-      }
-      
-      setFiles([...files, ...newFiles]);
-    }
+    if (!scanType) return setUploadError('Select scan type first');
+    if (e.dataTransfer.files?.length > 0) handleFileChange({ target: { files: e.dataTransfer.files } });
   };
 
   const handleDeleteFile = (index) => {
     const newFiles = [...files];
     newFiles.splice(index, 1);
     setFiles(newFiles);
-    setUploadError('');
+    
+    // Check if warning should be removed
+    if ((scanType === 'text' || scanType === 'code') && newFiles.length !== 1) {
+      setShowFileWarning(false);
+    }
   };
 
   const handleScan = () => {
-    if (!analysisName.trim()) {
-      setAnalysisError('Please enter an analysis name');
-      return;
-    }
-    if (files.length === 0) {
-      setUploadError('Please upload at least one file');
-      return;
+    if (!scanType) return setUploadError('Select scan type first');
+    if (!analysisName.trim()) return setAnalysisError('Enter analysis name');
+    
+    const minFiles = scanType === 'ai' ? 1 : 2;
+    if (files.length < minFiles) {
+      return setUploadError(`Upload at least ${minFiles} file(s)`);
     }
     
     setAnalysisError('');
     setUploadError('');
-    // Here you would handle the scan logic
-    console.log('Scanning files:', files);
-    console.log('Analysis name:', analysisName);
-    // After scanning, you might navigate to results or history
-    navigate('/');
+    setIsScanning(true);
+    
+    setTimeout(() => {
+      setIsScanning(false);
+      setScanComplete(true);
+    }, 2000);
   };
 
+  const handleViewResults = () => {
+    navigate('/results', { state: { files, analysisName, scanType } });
+  };
+
+  const handleNavigateToHistory = () => {
+    navigate('/history');
+  };
+
+  // Styles
   const styles = {
     dashboard: {
       display: 'flex',
@@ -188,6 +239,29 @@ const PlagioDashboard = ({ userEmail = "user@example.com" }) => {
       display: 'flex',
       flexDirection: 'column'
     },
+    scanTypeSelector: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: '20px',
+      marginBottom: '20px'
+    },
+    scanTypeButton: {
+      padding: '15px 25px',
+      borderRadius: '50px',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '16px',
+      fontWeight: 'bold',
+      transition: 'all 0.3s',
+      backgroundColor: '#ecf0f1',
+      ':hover': {
+        transform: 'scale(1.05)'
+      }
+    },
+    activeScanType: {
+      backgroundColor: '#1abc9c',
+      color: 'white'
+    },
     uploadSection: {
       backgroundColor: 'white',
       borderRadius: '5px',
@@ -255,10 +329,34 @@ const PlagioDashboard = ({ userEmail = "user@example.com" }) => {
         backgroundColor: '#16a085'
       }
     },
+    loadingIndicator: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '40px'
+    },
+    resultButton: {
+      padding: '10px 20px',
+      backgroundColor: '#1abc9c',
+      color: 'white',
+      border: 'none',
+      borderRadius: '5px',
+      cursor: 'pointer',
+      fontSize: '16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      transition: 'background-color 0.3s',
+      ':hover': {
+        backgroundColor: '#16a085'
+      }
+    },
     fileList: {
       width: '100%',
       marginTop: '20px',
-      textAlign: 'left'
+      textAlign: 'left',
+      maxHeight: '200px',
+      overflowY: 'auto'
     },
     fileItem: {
       padding: '8px 0',
@@ -297,36 +395,32 @@ const PlagioDashboard = ({ userEmail = "user@example.com" }) => {
     noFilesText: {
       color: '#7f8c8d',
       marginTop: '10px'
+    },
+    fileWarning: {
+      color: '#e67e22',
+      fontSize: '14px',
+      textAlign: 'center',
+      width: '100%',
+      marginTop: '10px'
     }
   };
 
   return (
     <div style={styles.dashboard}>
-      {/* Sidebar - Consistent with other pages */}
+      <GlobalStyles />
+      
+      {/* Sidebar */}
       <div style={styles.sidebar}>
-        <button 
-          style={styles.sidebarCollapseButton}
-          onClick={toggleSidebar}
-        >
+        <button style={styles.sidebarCollapseButton} onClick={toggleSidebar}>
           {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
         </button>
         
         <div>
-          <div style={styles.logo}>
-            {sidebarCollapsed ? 'P' : 'PLAGIO'}
-          </div>
-          <div 
-            style={{
-              ...styles.menuItem,
-              ...styles.activeMenuItem
-            }}
-          >
+          <div style={styles.logo}>{sidebarCollapsed ? 'P' : 'PLAGIO'}</div>
+          <div style={{ ...styles.menuItem, ...styles.activeMenuItem }}>
             {sidebarCollapsed ? 'N' : 'New Scan'}
           </div>
-          <div 
-            style={styles.menuItem}
-            onClick={() => navigate('/')}
-          >
+          <div style={styles.menuItem} onClick={handleNavigateToHistory}>
             {sidebarCollapsed ? 'M' : 'My Scans'}
           </div>
         </div>
@@ -338,15 +432,33 @@ const PlagioDashboard = ({ userEmail = "user@example.com" }) => {
 
       {/* Main Content */}
       <div style={styles.mainContent}>
-        {/* Top Bar with User Email */}
         <div style={styles.topBar}>
           <div></div>
           <div style={styles.userEmail}>{userEmail}</div>
         </div>
 
-        {/* Content Area */}
         <div style={styles.contentArea}>
-          {/* Upload Section */}
+          <div style={styles.scanTypeSelector}>
+            <button
+              style={{ ...styles.scanTypeButton, ...(scanType === 'text' && styles.activeScanType) }}
+              onClick={() => { setScanType('text'); setFiles([]); setUploadError(''); setScanComplete(false); setShowFileWarning(false); }}
+            >
+              Text Documents
+            </button>
+            <button
+              style={{ ...styles.scanTypeButton, ...(scanType === 'code' && styles.activeScanType) }}
+              onClick={() => { setScanType('code'); setFiles([]); setUploadError(''); setScanComplete(false); setShowFileWarning(false); }}
+            >
+              Source Code
+            </button>
+            <button
+              style={{ ...styles.scanTypeButton, ...(scanType === 'ai' && styles.activeScanType) }}
+              onClick={() => { setScanType('ai'); setFiles([]); setUploadError(''); setScanComplete(false); setShowFileWarning(false); }}
+            >
+              AI Content
+            </button>
+          </div>
+
           <div style={styles.uploadSection}>
             <h2 style={styles.uploadHeading}>Upload Files</h2>
             <div 
@@ -371,7 +483,6 @@ const PlagioDashboard = ({ userEmail = "user@example.com" }) => {
                 onChange={handleFileChange}
               />
               
-              {/* Display selected files with delete buttons */}
               {files.length > 0 ? (
                 <div style={styles.fileList}>
                   {files.map((file, index) => (
@@ -388,38 +499,54 @@ const PlagioDashboard = ({ userEmail = "user@example.com" }) => {
                   ))}
                 </div>
               ) : (
-                <div style={styles.noFilesText}>No files selected</div>
+                <div style={styles.noFilesText}>
+                  {scanType 
+                    ? `No files selected. Allowed: ${scanType === 'code' ? '.c, .cpp' : '.txt, .docx'}`
+                    : 'Please select a scan type first'}
+                </div>
               )}
-              {uploadError && (
-                <div style={styles.uploadErrorMessage}>{uploadError}</div>
+              {showFileWarning && (
+                <div style={styles.fileWarning}>
+                  Note: You need to upload at least 2 files for this scan type
+                </div>
               )}
+              {uploadError && <div style={styles.uploadErrorMessage}>{uploadError}</div>}
             </div>
           </div>
 
-          {/* Scan Controls */}
           <div style={styles.scanControls}>
             <div style={{ width: '70%' }}>
               <input
                 type="text"
                 style={styles.analysisNameInput}
-                placeholder="Enter analysis name for uploaded files"
+                placeholder="Enter analysis name"
                 value={analysisName}
-                onChange={(e) => {
-                  setAnalysisName(e.target.value);
-                  setAnalysisError('');
-                }}
+                onChange={(e) => { setAnalysisName(e.target.value); setAnalysisError(''); }}
               />
-              {analysisError && (
-                <div style={styles.analysisErrorMessage}>{analysisError}</div>
-              )}
+              {analysisError && <div style={styles.analysisErrorMessage}>{analysisError}</div>}
             </div>
-            <button 
-              style={styles.scanButton}
-              onClick={handleScan}
-              disabled={files.length === 0}
-            >
-              Scan
-            </button>
+            
+            {isScanning ? (
+              <div style={styles.loadingIndicator}>
+                <LoadingSpinner />
+              </div>
+            ) : scanComplete ? (
+              <button style={styles.resultButton} onClick={handleViewResults}>
+                <FiCheckCircle /> View Results
+              </button>
+            ) : (
+              <button 
+                style={styles.scanButton}
+                onClick={handleScan}
+                disabled={
+                  (scanType === 'text' && files.length < 2) || 
+                  (scanType === 'code' && files.length < 2) ||
+                  (scanType === 'ai' && files.length < 1)
+                }
+              >
+                Scan
+              </button>
+            )}
           </div>
         </div>
       </div>

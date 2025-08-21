@@ -1,7 +1,38 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HistoryPage from './pages/HistoryPage';
-import Operations from './pages/Operations';
+import PlagioDashboard from './pages/PlagioDashboard';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Main routes */}
+        <Route path="/" element={<HistoryPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/plagio-dashboard" element={<PlagioDashboard />} />
+        
+        {/* Optional: Pre-selected scan type routes */}
+        <Route path="/plagio-dashboard/text" element={<PlagioDashboard defaultScanType="text" />} />
+        <Route path="/plagio-dashboard/code" element={<PlagioDashboard defaultScanType="code" />} />
+        <Route path="/plagio-dashboard/ai" element={<PlagioDashboard defaultScanType="ai" />} />
+        
+        {/* Fallback route */}
+        <Route path="*" element={<HistoryPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;
+
+
+
+
+/*import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import HistoryPage from './pages/HistoryPage';
+//import Operations from './pages/Operations';
 import PlagioDashboard from './pages/PlagioDashboard';
 
 function App() {
@@ -9,13 +40,14 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HistoryPage />}/>
-        <Route path="/operations" element={<Operations />} />
-        <Route path="/dashboard/text" element={<PlagioDashboard scanType="Text" />} />
-        <Route path="/dashboard/code" element={<PlagioDashboard scanType="Code" />} />
-        <Route path="/dashboard/ai" element={<PlagioDashboard scanType="AI" />} />
+        <Route path="/PlagioDashboard/text" element={<PlagioDashboard scanType="Text" />} />
+        <Route path="/PlagioDashboard/code" element={<PlagioDashboard scanType="Code" />} />
+        <Route path="/PlagioDashboard/ai" element={<PlagioDashboard scanType="AI" />} />
       </Routes>
     </BrowserRouter>
   );
 }
 
-export default App;
+export default App;*/
+
+// <Route path="/operations" element={<Operations />} />
