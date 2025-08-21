@@ -2,22 +2,19 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HistoryPage from './pages/HistoryPage';
 import PlagioDashboard from './pages/PlagioDashboard';
+import ResultsPage from './pages/ResultsPage'; // Add this import
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Main routes */}
         <Route path="/" element={<HistoryPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/plagio-dashboard" element={<PlagioDashboard />} />
-        
-        {/* Optional: Pre-selected scan type routes */}
         <Route path="/plagio-dashboard/text" element={<PlagioDashboard defaultScanType="text" />} />
         <Route path="/plagio-dashboard/code" element={<PlagioDashboard defaultScanType="code" />} />
         <Route path="/plagio-dashboard/ai" element={<PlagioDashboard defaultScanType="ai" />} />
-        
-        {/* Fallback route */}
+        <Route path="/results" element={<ResultsPage />} /> {/* Add this route */}
         <Route path="*" element={<HistoryPage />} />
       </Routes>
     </BrowserRouter>
