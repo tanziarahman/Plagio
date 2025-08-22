@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiChevronLeft, FiChevronRight, FiFile, FiCode, FiType, FiArrowLeft } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiFile, FiCode, FiArrowLeft } from 'react-icons/fi';
 
 const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
   const navigate = useNavigate();
@@ -17,107 +17,49 @@ const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
 
   // Mock data for file content and plagiarism matches
   const [fileContents] = useState({
-    'Document1.txt': {
-      content: `This is a sample text document that contains some plagiarized content.
+    '111.txt': {
+      content: `This is the content of file 111.txt.
+It contains some original text and some plagiarized content.
+The quick brown fox jumps over the lazy dog. This sentence is commonly used for testing.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris.
+This is another paragraph that might contain plagiarized material from various sources.
+The quick brown fox jumps over the lazy dog appears again here for demonstration purposes.
+This document has multiple sections that may match with other files in the database.
+Plagiarism detection is an important tool for academic integrity.
+Many institutions use software to identify copied content.`,
+      matches: [
+        { start: 45, end: 118, source: '222.txt', similarity: 92.5 },
+        { start: 119, end: 213, source: '222.txt', similarity: 78.3 },
+        { start: 250, end: 320, source: '333.txt', similarity: 85.2 }
+      ]
+    },
+    '222.txt': {
+      content: `This is the content of file 222.txt.
+It contains text that matches with 111.txt in several places.
 The quick brown fox jumps over the lazy dog. This sentence is commonly used for testing.
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris.
 Vivamus luctus urna sed urna ultricies ac tempor dui sagittis. In condimentum facilisis porta.
-Sed non mauris vitae erat consequat auctor eu in elit. Class aptent taciti sociosqu ad litora torquent.
-This is another paragraph that might contain plagiarized material from various sources.
-The quick brown fox jumps over the lazy dog appears again here for demonstration purposes.`,
+The quick brown fox jumps over the lazy dog appears again here for demonstration purposes.
+Academic institutions take plagiarism very seriously.
+Students should always cite their sources properly.
+Using someone else's work without attribution is considered academic dishonesty.`,
       matches: [
-        { start: 12, end: 85, source: 'script.js', similarity: 92.5 },
-        { start: 86, end: 180, source: 'Essay.pdf', similarity: 78.3 },
-        { start: 250, end: 320, source: 'program.cpp', similarity: 85.7 }
+        { start: 50, end: 123, source: '111.txt', similarity: 92.5 },
+        { start: 124, end: 218, source: '111.txt', similarity: 78.3 },
+        { start: 280, end: 350, source: '333.txt', similarity: 81.7 }
       ]
     },
-    'script.js': {
-      content: `// JavaScript code example
-function calculateSum(a, b) {
-  return a + b;
-}
-
-// This function multiplies two numbers
-function multiplyNumbers(x, y) {
-  return x * y;
-}
-
-// Common algorithm pattern
-const quickBrownFox = "jumps over the lazy dog";
-console.log(quickBrownFox);
-
-// Another code snippet that might be similar to other files
-for (let i = 0; i < 10; i++) {
-  console.log("Iteration: " + i);
-}`,
-      matches: [
-        { start: 120, end: 160, source: 'Document1.txt', similarity: 92.5 },
-        { start: 200, end: 250, source: 'program.cpp', similarity: 88.2 }
-      ]
-    },
-    'Essay.pdf': {
-      content: `Academic Essay on Modern Technology
-
-Introduction: Technology has revolutionized the way we live and work. 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris.
-The quick brown fox jumps over the lazy dog is an example sentence.
-
-Body: The impact of technology on society cannot be overstated. 
-Vivamus luctus urna sed urna ultricies ac tempor dui sagittis. 
-This paragraph contains content that may be similar to other sources.
-
-Conclusion: In conclusion, technology will continue to shape our future. 
-Sed non mauris vitae erat consequat auctor eu in elit.`,
-      matches: [
-        { start: 80, end: 150, source: 'Document1.txt', similarity: 78.3 },
-        { start: 180, end: 250, source: 'Report.docx', similarity: 82.1 }
-      ]
-    },
-    'Report.docx': {
-      content: `Business Report Q3 2025
-
-Executive Summary: Our company has seen significant growth this quarter.
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris.
-
-Financial Analysis: Revenue increased by 15% compared to last quarter.
+    '333.txt': {
+      content: `This is the content of file 333.txt.
+It shares some common phrases with other documents.
+The quick brown fox jumps over the lazy dog. This sentence is commonly used for testing.
 Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.
-
-Conclusion: We expect continued growth in Q4 based on current trends.
-Sed non mauris vitae erat consequat auctor eu in elit.`,
+Plagiarism can have serious consequences for students and professionals.
+Always ensure you properly attribute any sources you use in your work.
+Academic integrity is fundamental to the educational process.`,
       matches: [
-        { start: 60, end: 130, source: 'Essay.pdf', similarity: 82.1 },
-        { start: 170, end: 240, source: 'program.cpp', similarity: 76.4 }
-      ]
-    },
-    'program.cpp': {
-      content: `#include <iostream>
-using namespace std;
-
-// Function to calculate sum
-int calculateSum(int a, int b) {
-  return a + b;
-}
-
-// Function to multiply numbers
-int multiplyNumbers(int x, int y) {
-  return x * y;
-}
-
-// Main function
-int main() {
-  cout << "The quick brown fox jumps over the lazy dog" << endl;
-  
-  // Loop example
-  for (int i = 0; i < 10; i++) {
-  cout << "Iteration: " << i << endl;
-  }
-  
-  return 0;
-}`,
-      matches: [
-        { start: 150, end: 190, source: 'Document1.txt', similarity: 85.7 },
-        { start: 220, end: 270, source: 'script.js', similarity: 88.2 },
-        { start: 300, end: 350, source: 'Report.docx', similarity: 76.4 }
+        { start: 55, end: 128, source: '111.txt', similarity: 85.2 },
+        { start: 129, end: 200, source: '222.txt', similarity: 81.7 }
       ]
     }
   });
@@ -160,6 +102,14 @@ int main() {
     return match ? match.similarity : 0;
   };
 
+  const highlightColors = [
+    { background: '#FFD6E0', text: '#D32F2F' }, // Baby pink
+    { background: '#D1ECF1', text: '#0C4B5E' }, // Baby blue
+    { background: '#D4EDDA', text: '#155724' }, // Light green
+    { background: '#FFF3CD', text: '#856404' }, // Light yellow
+    { background: '#E8DAEF', text: '#4A235A' }, // Light purple
+  ];
+
   const highlightPlagiarizedContent = (content, matches, currentComparison) => {
     if (!matches.length) return content;
     
@@ -174,15 +124,28 @@ int main() {
       ? sortedMatches.filter(m => m.source === currentComparison)
       : sortedMatches;
     
-    relevantMatches.forEach(match => {
+    relevantMatches.forEach((match, index) => {
       // Add non-highlighted text before the match
       if (match.start > lastIndex) {
         highlightedContent.push(content.slice(lastIndex, match.start));
       }
       
+      // Get color based on match index (cycle through colors)
+      const colorIndex = index % highlightColors.length;
+      const color = highlightColors[colorIndex];
+      
       // Add highlighted text
       highlightedContent.push(
-        <span key={match.start} style={{ backgroundColor: '#ffeb3b', color: '#d32f2f', padding: '2px 0' }}>
+        <span 
+          key={match.start} 
+          style={{ 
+            backgroundColor: color.background, 
+            color: color.text, 
+            padding: '2px 0',
+            borderRadius: '3px',
+            fontWeight: '500'
+          }}
+        >
           {content.slice(match.start, match.end)}
         </span>
       );
@@ -250,10 +213,10 @@ int main() {
       transition: 'background-color 0.3s',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      ':hover': {
-        backgroundColor: '#34495e'
-      }
+      textOverflow: 'ellipsis'
+    },
+    menuItemHover: {
+      backgroundColor: '#34495e'
     },
     activeMenuItem: {
       backgroundColor: '#1abc9c',
@@ -268,11 +231,11 @@ int main() {
       width: '100%',
       textAlign: 'center',
       transition: 'background-color 0.3s',
-      ':hover': {
-        backgroundColor: '#c0392b'
-      },
       marginTop: 'auto',
       borderBottomLeftRadius: '4px'
+    },
+    logoutButtonHover: {
+      backgroundColor: '#c0392b'
     },
     mainContent: {
       flex: 1,
@@ -295,45 +258,14 @@ int main() {
       flex: 1,
       padding: '20px',
       display: 'flex',
-      flexDirection: 'column'
-    },
-    headerSection: {
-      marginBottom: '20px',
-      padding: '15px',
-      backgroundColor: 'white',
-      borderRadius: '5px',
-      boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center'
-    },
-    analysisTitle: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: '#2c3e50',
-      margin: 0
-    },
-    backButton: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      padding: '10px 16px',
-      backgroundColor: '#3498db',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontWeight: '500',
-      transition: 'background-color 0.3s',
-      ':hover': {
-        backgroundColor: '#2980b9'
-      }
+      flexDirection: 'column',
+      position: 'relative'
     },
     comparisonContainer: {
       display: 'flex',
       gap: '20px',
       flex: 1,
-      height: 'calc(100vh - 200px)'
+      marginBottom: '70px'
     },
     // Left panel - File content with highlights
     leftPanel: {
@@ -420,18 +352,38 @@ int main() {
       display: 'flex',
       alignItems: 'center',
       gap: '10px',
-      transition: 'background-color 0.2s',
-      ':hover': {
-        backgroundColor: '#f1f5f9'
-      }
+      transition: 'background-color 0.2s'
+    },
+    otherFileItemHover: {
+      backgroundColor: '#f1f5f9'
     },
     selectedOtherFile: {
       backgroundColor: '#e6f7ff',
       borderLeft: '4px solid #3498db'
+    },
+    backButton: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '10px 16px',
+      backgroundColor: '#3498db',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontWeight: '500',
+      transition: 'background-color 0.3s',
+      position: 'absolute',
+      bottom: '20px',
+      left: '20px',
+      zIndex: 10
+    },
+    backButtonHover: {
+      backgroundColor: '#2980b9'
     }
   };
 
-  const currentFileContent = fileContents[currentSelectedFile] || { content: '', matches: [] };
+  const currentFileContent = fileContents[currentSelectedFile] || { content: 'No content available', matches: [] };
   const similarityScore = getSimilarityWithFile(currentSelectedFile, comparedFile);
   const otherFiles = files.filter(file => file.name !== currentSelectedFile);
 
@@ -449,19 +401,27 @@ int main() {
           </div>
           <div 
             style={styles.menuItem} 
+            onMouseOver={(e) => e.target.style.backgroundColor = styles.menuItemHover.backgroundColor}
+            onMouseOut={(e) => e.target.style.backgroundColor = ''}
             onClick={() => handleNavigation('new-scan')}
           >
             {sidebarCollapsed ? 'N' : 'New Scan'}
           </div>
           <div 
             style={styles.menuItem} 
+            onMouseOver={(e) => e.target.style.backgroundColor = styles.menuItemHover.backgroundColor}
+            onMouseOut={(e) => e.target.style.backgroundColor = ''}
             onClick={() => handleNavigation('scans')}
           >
             {sidebarCollapsed ? 'M' : 'My Scans'}
           </div>
         </div>
         
-        <button style={styles.logoutButton}>
+        <button 
+          style={styles.logoutButton}
+          onMouseOver={(e) => e.target.style.backgroundColor = styles.logoutButtonHover.backgroundColor}
+          onMouseOut={(e) => e.target.style.backgroundColor = styles.logoutButton.backgroundColor}
+        >
           {sidebarCollapsed ? 'L' : 'Logout'}
         </button>
       </div>
@@ -474,18 +434,6 @@ int main() {
         </div>
 
         <div style={styles.contentArea}>
-          {/* Header Section */}
-          <div style={styles.headerSection}>
-            <h1 style={styles.analysisTitle}>{analysisName}</h1>
-            <button 
-              style={styles.backButton}
-              onClick={() => handleNavigation('results')}
-            >
-              <FiArrowLeft />
-              Back to Results
-            </button>
-          </div>
-
           {/* Comparison Container */}
           <div style={styles.comparisonContainer}>
             {/* Left Panel - File Content with Highlights */}
@@ -525,6 +473,8 @@ int main() {
                         ...styles.otherFileItem,
                         ...(file.name === comparedFile && styles.selectedOtherFile)
                       }}
+                      onMouseOver={(e) => e.target.style.backgroundColor = styles.otherFileItemHover.backgroundColor}
+                      onMouseOut={(e) => e.target.style.backgroundColor = (file.name === comparedFile ? styles.selectedOtherFile.backgroundColor : '')}
                       onClick={() => setComparedFile(file.name)}
                     >
                       {getIconForType(file.name)}
@@ -535,6 +485,17 @@ int main() {
               </div>
             </div>
           </div>
+
+          {/* Back Button at Bottom Left (outside the file content box) */}
+          <button 
+            style={styles.backButton}
+            onMouseOver={(e) => e.target.style.backgroundColor = styles.backButtonHover.backgroundColor}
+            onMouseOut={(e) => e.target.style.backgroundColor = styles.backButton.backgroundColor}
+            onClick={() => handleNavigation('results')}
+          >
+            <FiArrowLeft />
+            Back to Results
+          </button>
         </div>
       </div>
     </div>
