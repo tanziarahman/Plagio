@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiChevronLeft, FiChevronRight, FiDownload, FiPrinter, FiArrowLeft, FiFile } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiFile, FiArrowLeft } from 'react-icons/fi';
 
 const ResultsPage = ({ userEmail = "user@example.com" }) => {
   const navigate = useNavigate();
@@ -14,39 +14,23 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
     scanType: 'text' 
   };
 
-  // Mock similarity data (replace with actual results from your backend)
+  // Mock similarity data
   const [similarityResults] = useState({
-    overallSimilarity: 42.7,
-    fileComparisons: [
-      { file1: 'document1.txt', file2: 'document2.txt', similarity: 65.2 },
-      { file1: 'document1.txt', file2: 'document3.docx', similarity: 28.4 },
-      { file1: 'document2.txt', file2: 'document3.docx', similarity: 34.8 }
-    ],
-    detailedResults: files.map(file => ({
-      name: file.name,
-      matches: [
-        { matchedFile: 'document2.txt', similarity: 65.2, sections: ['Introduction', 'Conclusion'] },
-        { matchedFile: 'document3.docx', similarity: 28.4, sections: ['Methodology'] }
-      ]
-    }))
+    overallSimilarity: 42.7
   });
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  const handleNavigateToHistory = () => {
-    navigate('/history');
-  };
-
-  const handleBackToDashboard = () => {
-    navigate('/plagio-dashboard');
-  };
-
-  const handleFileClick = (fileName) => {
-    console.log(`File clicked: ${fileName}`);
-    // Navigate to file details page
-    // navigate('/file-details', { state: { fileName, comparisons: similarityResults.fileComparisons } });
+  const handleNavigation = (page) => {
+    if (page === 'scans') {
+      navigate('/history'); // Changed to match App.js route
+    } else if (page === 'new-scan') {
+      navigate('/plagio-dashboard'); // Changed to match App.js route
+    } else if (page === 'dashboard') {
+      navigate('/plagio-dashboard'); // Changed to match App.js route
+    }
   };
 
   const styles = {
@@ -54,7 +38,7 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
       display: 'flex',
       minHeight: '100vh',
       fontFamily: 'Arial, sans-serif',
-      backgroundColor: '#f5f5f5'
+      backgroundColor: '#f8fafc'
     },
     sidebar: {
       width: sidebarCollapsed ? '60px' : '200px',
@@ -92,7 +76,8 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
       borderBottom: '1px solid #34495e',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
-      textOverflow: 'ellipsis'
+      textOverflow: 'ellipsis',
+      cursor: 'pointer'
     },
     menuItem: {
       padding: '12px 20px',
@@ -145,12 +130,10 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
       flex: 1,
       padding: '20px',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      position: 'relative'
     },
     headerSection: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
       marginBottom: '20px',
       padding: '15px',
       backgroundColor: 'white',
@@ -160,72 +143,21 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
     analysisTitle: {
       fontSize: '24px',
       fontWeight: 'bold',
-      color: '#2c3e50'
+      color: '#2c3e50',
+      margin: 0
     },
-    actionButtons: {
-      display: 'flex',
-      gap: '10px'
-    },
-    actionButton: {
-      padding: '8px 15px',
-      backgroundColor: '#1abc9c',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '5px',
-      transition: 'background-color 0.3s',
-      ':hover': {
-        backgroundColor: '#16a085'
-      }
-    },
-    backButton: {
-      backgroundColor: '#95a5a6',
-      ':hover': {
-        backgroundColor: '#7f8c8d'
-      }
+    analysisType: {
+      fontSize: '16px',
+      color: '#64748b',
+      marginTop: '8px',
+      fontStyle: 'italic'
     },
     resultsContainer: {
       display: 'flex',
       gap: '20px',
       flex: 1
     },
-    // RIGHT COLUMN - Overall Similarity (Top Right)
-    rightColumn: {
-      width: '300px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px'
-    },
-    similarityBox: {
-      backgroundColor: 'white',
-      padding: '20px',
-      borderRadius: '5px',
-      boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center'
-    },
-    similarityTitle: {
-      fontSize: '18px',
-      fontWeight: 'bold',
-      marginBottom: '15px',
-      color: '#2c3e50'
-    },
-    similarityPercentage: {
-      fontSize: '48px',
-      fontWeight: 'bold',
-      color: '#e74c3c',
-      margin: '10px 0'
-    },
-    similarityLabel: {
-      fontSize: '14px',
-      color: '#7f8c8d',
-      marginBottom: '15px'
-    },
-    // LEFT COLUMN - Files and Comparisons
+    // LEFT COLUMN - Uploaded Files
     leftColumn: {
       flex: 1,
       display: 'flex',
@@ -236,77 +168,119 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
       backgroundColor: 'white',
       padding: '20px',
       borderRadius: '5px',
-      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+      boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+      flex: 1
     },
-    filesTitle: {
+    sectionTitle: {
       fontSize: '18px',
       fontWeight: 'bold',
       marginBottom: '15px',
       color: '#2c3e50'
     },
     fileList: {
-      maxHeight: '400px',
-      overflowY: 'auto'
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px'
     },
     fileItem: {
-      padding: '12px',
-      borderBottom: '1px solid #ecf0f1',
       display: 'flex',
       alignItems: 'center',
-      gap: '10px',
-      cursor: 'pointer',
-      transition: 'background-color 0.2s',
-      ':hover': {
-        backgroundColor: '#f8f9fa'
-      }
+      gap: '12px',
+      padding: '12px',
+      border: '1px solid #e2e8f0',
+      borderRadius: '5px',
+      backgroundColor: '#f8fafc'
     },
     fileIcon: {
       color: '#3498db'
     },
-    fileName: {
-      fontWeight: '500',
+    fileInfo: {
       flex: 1
     },
+    fileName: {
+      fontWeight: '500',
+      color: '#2d3748'
+    },
     fileType: {
-      color: '#7f8c8d',
-      fontSize: '12px'
+      color: '#64748b',
+      fontSize: '14px',
+      marginTop: '2px'
     },
-    comparisonSection: {
-      backgroundColor: 'white',
-      padding: '20px',
-      borderRadius: '5px',
-      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-    },
-    comparisonTitle: {
-      fontSize: '18px',
-      fontWeight: 'bold',
-      marginBottom: '15px',
-      color: '#2c3e50'
-    },
-    comparisonList: {
+    // RIGHT COLUMN - Overall Similarity
+    rightColumn: {
+      width: '300px',
       display: 'flex',
       flexDirection: 'column',
-      gap: '10px'
+      gap: '20px'
     },
-    comparisonItem: {
-      padding: '12px',
-      border: '1px solid #ecf0f1',
+    similarityBox: {
+      backgroundColor: 'white',
+      padding: '24px',
+      textAlign: 'center',
+      border: '2px solid #e2e8f0',
+      borderRadius: '8px'
+    },
+    similarityTitle: {
+      fontSize: '16px',
+      fontWeight: '600',
+      color: '#2d3748',
+      margin: '0 0 16px 0',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px'
+    },
+    similarityScore: {
+      fontSize: '42px',
+      fontWeight: '700',
+      color: '#dc2626',
+      margin: '8px 0',
+      lineHeight: '1.2'
+    },
+    similarityLabel: {
+      fontSize: '14px',
+      color: '#64748b',
+      fontWeight: '500',
+      marginBottom: '16px'
+    },
+    // Visual similarity indicator
+    similarityVisual: {
+      width: '100%',
+      height: '8px',
+      backgroundColor: '#e5e7eb',
       borderRadius: '4px',
+      overflow: 'hidden',
+      marginBottom: '8px'
+    },
+    similarityProgress: {
+      height: '100%',
+      backgroundColor: '#dc2626',
+      borderRadius: '4px',
+      width: `${similarityResults.overallSimilarity}%`,
+      transition: 'width 0.5s ease-in-out'
+    },
+    similarityLegend: {
       display: 'flex',
       justifyContent: 'space-between',
-      alignItems: 'center'
+      fontSize: '12px',
+      color: '#6b7280'
     },
-    comparisonText: {
-      fontSize: '14px'
-    },
-    comparisonPercentage: {
-      fontWeight: 'bold',
-      color: '#e74c3c'
-    },
-    // BOTTOM BUTTON
-    bottomButtonContainer: {
-      marginTop: 'auto',
-      padding: '20px 0'
+    backButton: {
+      position: 'absolute',
+      bottom: '20px',
+      right: '20px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '10px 16px',
+      backgroundColor: '#3498db',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontWeight: '500',
+      transition: 'background-color 0.3s',
+      ':hover': {
+        backgroundColor: '#2980b9'
+      }
     }
   };
 
@@ -319,14 +293,19 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
         </button>
         
         <div>
-          <div style={styles.logo}>{sidebarCollapsed ? 'P' : 'PLAGIO'}</div>
-          <div style={styles.menuItem} onClick={handleBackToDashboard}>
+          <div style={styles.logo} onClick={() => handleNavigation('dashboard')}>
+            {sidebarCollapsed ? 'P' : 'PLAGIO'}
+          </div>
+          <div 
+            style={styles.menuItem} 
+            onClick={() => handleNavigation('new-scan')}
+          >
             {sidebarCollapsed ? 'N' : 'New Scan'}
           </div>
-          <div style={{ ...styles.menuItem, ...styles.activeMenuItem }}>
-            {sidebarCollapsed ? 'R' : 'Results'}
-          </div>
-          <div style={styles.menuItem} onClick={handleNavigateToHistory}>
+          <div 
+            style={styles.menuItem} 
+            onClick={() => handleNavigation('scans')}
+          >
             {sidebarCollapsed ? 'M' : 'My Scans'}
           </div>
         </div>
@@ -346,33 +325,21 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
         <div style={styles.contentArea}>
           {/* Header Section */}
           <div style={styles.headerSection}>
-            <div style={styles.analysisTitle}>{analysisName} - {scanType.toUpperCase()} Analysis</div>
-            <div style={styles.actionButtons}>
-              <button style={styles.actionButton}>
-                <FiDownload /> Download Report
-              </button>
-              <button style={styles.actionButton}>
-                <FiPrinter /> Print
-              </button>
-            </div>
+            <h1 style={styles.analysisTitle}>{analysisName}</h1>
+            <div style={styles.analysisType}>{scanType.toUpperCase()} Analysis</div>
           </div>
 
           {/* Results Container */}
           <div style={styles.resultsContainer}>
-            {/* Left Column - Files and Comparisons */}
+            {/* Left Column - Uploaded Files */}
             <div style={styles.leftColumn}>
-              {/* Uploaded Files */}
               <div style={styles.filesSection}>
-                <div style={styles.filesTitle}>Uploaded Files ({files.length})</div>
+                <h2 style={styles.sectionTitle}>Uploaded Files ({files.length})</h2>
                 <div style={styles.fileList}>
                   {files.map((file, index) => (
-                    <div 
-                      key={index} 
-                      style={styles.fileItem}
-                      onClick={() => handleFileClick(file.name)}
-                    >
+                    <div key={index} style={styles.fileItem}>
                       <FiFile style={styles.fileIcon} />
-                      <div>
+                      <div style={styles.fileInfo}>
                         <div style={styles.fileName}>{file.name}</div>
                         <div style={styles.fileType}>{file.name.split('.').pop().toUpperCase()} file</div>
                       </div>
@@ -380,42 +347,35 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* File Comparisons */}
-              <div style={styles.comparisonSection}>
-                <div style={styles.comparisonTitle}>File Comparisons</div>
-                <div style={styles.comparisonList}>
-                  {similarityResults.fileComparisons.map((comparison, index) => (
-                    <div key={index} style={styles.comparisonItem}>
-                      <div style={styles.comparisonText}>
-                        {comparison.file1} ↔ {comparison.file2}
-                      </div>
-                      <div style={styles.comparisonPercentage}>{comparison.similarity}% similar</div>
-                    </div>
-                  ))}
+            {/* Right Column - Overall Similarity */}
+            <div style={styles.rightColumn}>
+              <div style={styles.similarityBox}>
+                <h3 style={styles.similarityTitle}>Overall Similarity</h3>
+                <div style={styles.similarityScore}>{similarityResults.overallSimilarity}%</div>
+                <div style={styles.similarityLabel}>across all files</div>
+                
+                {/* Visual Similarity Indicator */}
+                <div style={styles.similarityVisual}>
+                  <div style={styles.similarityProgress}></div>
+                </div>
+                <div style={styles.similarityLegend}>
+                  <span>0%</span>
+                  <span>100%</span>
                 </div>
               </div>
             </div>
-
-            {/* Right Column - Overall Similarity (Top Right) */}
-            <div style={styles.rightColumn}>
-              <div style={styles.similarityBox}>
-                <div style={styles.similarityTitle}>Overall Similarity</div>
-                <div style={styles.similarityPercentage}>{similarityResults.overallSimilarity}%</div>
-                <div style={styles.similarityLabel}>across all files</div>
-              </div>
-            </div>
           </div>
 
-          {/* Back to Dashboard Button (Bottom) */}
-          <div style={styles.bottomButtonContainer}>
-            <button 
-              style={{...styles.actionButton, ...styles.backButton}} 
-              onClick={handleBackToDashboard}
-            >
-              <FiArrowLeft /> Back to Dashboard
-            </button>
-          </div>
+          {/* Back to Dashboard Button */}
+          <button 
+            style={styles.backButton}
+            onClick={() => handleNavigation('dashboard')}
+          >
+            <FiArrowLeft />
+            Back to Dashboard
+          </button>
         </div>
       </div>
     </div>
