@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiChevronLeft, FiChevronRight, FiFile, FiArrowLeft } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiFile, FiCode, FiType } from 'react-icons/fi';
 
 const ResultsPage = ({ userEmail = "user@example.com" }) => {
   const navigate = useNavigate();
@@ -14,10 +14,50 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
     scanType: 'text' 
   };
 
-  // Mock similarity data
-  const [similarityResults] = useState({
-    overallSimilarity: 42.7
-  });
+  // Generate plagiarism percentages for each file based on scan type
+  const generatePlagiarismResults = (files, scanType) => {
+    return files.map((file, index) => {
+      // Generate a realistic plagiarism percentage based on file type and index
+      let plagiarismPercent;
+      
+      if (scanType === 'text') {
+        plagiarismPercent = Math.random() * 50 + 10; // 10-60% for text
+      } else if (scanType === 'code') {
+        plagiarismPercent = Math.random() * 40 + 5; // 5-45% for code
+      } else if (scanType === 'ai') {
+        plagiarismPercent = Math.random() * 30 + 15; // 15-45% for AI
+      } else {
+        plagiarismPercent = Math.random() * 50; // 0-50% for unknown
+      }
+      
+      // Get current date for the "Date" column
+      const currentDate = new Date();
+      const formattedDate = currentDate.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+      
+      // Determine file type based on extension
+      let fileType = 'Text';
+      const extension = file.name.split('.').pop().toLowerCase();
+      if (['c', 'cpp', 'js', 'java', 'py', 'html', 'css'].includes(extension)) {
+        fileType = 'Code';
+      } else if (['pdf', 'docx', 'txt'].includes(extension)) {
+        fileType = 'Text';
+      }
+      
+      return {
+        id: index,
+        type: fileType,
+        name: file.name,
+        date: formattedDate,
+        plagiarismPercent: parseFloat(plagiarismPercent.toFixed(1))
+      };
+    });
+  };
+
+  const [resultsData] = useState(generatePlagiarismResults(files, scanType));
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -25,11 +65,26 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
 
   const handleNavigation = (page) => {
     if (page === 'scans') {
-      navigate('/history'); // Changed to match App.js route
+      navigate('/history');
     } else if (page === 'new-scan') {
-      navigate('/plagio-dashboard'); // Changed to match App.js route
+      navigate('/plagio-dashboard');
     } else if (page === 'dashboard') {
-      navigate('/plagio-dashboard'); // Changed to match App.js route
+      navigate('/plagio-dashboard');
+    }
+  };
+
+  const getColorForPercentage = (percent) => {
+    if (percent >= 70) return '#dc2626'; // High plagiarism - red
+    if (percent >= 40) return '#ea580c'; // Medium plagiarism - orange
+    if (percent >= 20) return '#ca8a04'; // Low plagiarism - yellow
+    return '#16a34a'; // Very low plagiarism - green
+  };
+
+  const getIconForType = (type) => {
+    switch (type.toLowerCase()) {
+      case 'code': return <FiCode style={{ color: '#3498db' }} />;
+      case 'ai': return <FiType style={{ color: '#9c27b0' }} />;
+      default: return <FiFile style={{ color: '#3498db' }} />;
     }
   };
 
@@ -130,157 +185,53 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
       flex: 1,
       padding: '20px',
       display: 'flex',
-      flexDirection: 'column',
-      position: 'relative'
+      flexDirection: 'column'
     },
-    headerSection: {
-      marginBottom: '20px',
-      padding: '15px',
+    resultsTable: {
       backgroundColor: 'white',
-      borderRadius: '5px',
-      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-    },
-    analysisTitle: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: '#2c3e50',
-      margin: 0
-    },
-    analysisType: {
-      fontSize: '16px',
-      color: '#64748b',
-      marginTop: '8px',
-      fontStyle: 'italic'
-    },
-    resultsContainer: {
-      display: 'flex',
-      gap: '20px',
-      flex: 1
-    },
-    // LEFT COLUMN - Uploaded Files
-    leftColumn: {
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px'
-    },
-    filesSection: {
-      backgroundColor: 'white',
-      padding: '20px',
       borderRadius: '5px',
       boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-      flex: 1
+      overflow: 'hidden'
     },
-    sectionTitle: {
-      fontSize: '18px',
-      fontWeight: 'bold',
-      marginBottom: '15px',
-      color: '#2c3e50'
-    },
-    fileList: {
+    tableHeader: {
       display: 'flex',
-      flexDirection: 'column',
-      gap: '12px'
-    },
-    fileItem: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      padding: '12px',
-      border: '1px solid #e2e8f0',
-      borderRadius: '5px',
-      backgroundColor: '#f8fafc'
-    },
-    fileIcon: {
-      color: '#3498db'
-    },
-    fileInfo: {
-      flex: 1
-    },
-    fileName: {
-      fontWeight: '500',
-      color: '#2d3748'
-    },
-    fileType: {
-      color: '#64748b',
-      fontSize: '14px',
-      marginTop: '2px'
-    },
-    // RIGHT COLUMN - Overall Similarity
-    rightColumn: {
-      width: '300px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px'
-    },
-    similarityBox: {
-      backgroundColor: 'white',
-      padding: '24px',
-      textAlign: 'center',
-      border: '2px solid #e2e8f0',
-      borderRadius: '8px'
-    },
-    similarityTitle: {
-      fontSize: '16px',
-      fontWeight: '600',
-      color: '#2d3748',
-      margin: '0 0 16px 0',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px'
-    },
-    similarityScore: {
-      fontSize: '42px',
-      fontWeight: '700',
-      color: '#dc2626',
-      margin: '8px 0',
-      lineHeight: '1.2'
-    },
-    similarityLabel: {
-      fontSize: '14px',
-      color: '#64748b',
-      fontWeight: '500',
-      marginBottom: '16px'
-    },
-    // Visual similarity indicator
-    similarityVisual: {
-      width: '100%',
-      height: '8px',
-      backgroundColor: '#e5e7eb',
-      borderRadius: '4px',
-      overflow: 'hidden',
-      marginBottom: '8px'
-    },
-    similarityProgress: {
-      height: '100%',
-      backgroundColor: '#dc2626',
-      borderRadius: '4px',
-      width: `${similarityResults.overallSimilarity}%`,
-      transition: 'width 0.5s ease-in-out'
-    },
-    similarityLegend: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      fontSize: '12px',
-      color: '#6b7280'
-    },
-    backButton: {
-      position: 'absolute',
-      bottom: '20px',
-      right: '20px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      padding: '10px 16px',
-      backgroundColor: '#3498db',
+      padding: '12px 15px',
+      backgroundColor: '#34495e',
       color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontWeight: '500',
-      transition: 'background-color 0.3s',
-      ':hover': {
-        backgroundColor: '#2980b9'
-      }
+      fontWeight: 'bold'
+    },
+    tableRow: {
+      display: 'flex',
+      padding: '12px 15px',
+      borderBottom: '1px solid #e2e8f0',
+      alignItems: 'center'
+    },
+    typeColumn: {
+      width: '120px',
+      padding: '0 10px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    },
+    nameColumn: {
+      flex: 2,
+      padding: '0 10px'
+    },
+    dateColumn: {
+      width: '120px',
+      padding: '0 10px'
+    },
+    percentColumn: {
+      width: '120px',
+      padding: '0 10px',
+      textAlign: 'center',
+      fontWeight: 'bold'
+    },
+    noResults: {
+      textAlign: 'center',
+      padding: '40px',
+      color: '#64748b',
+      fontSize: '18px'
     }
   };
 
@@ -323,59 +274,38 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
         </div>
 
         <div style={styles.contentArea}>
-          {/* Header Section */}
-          <div style={styles.headerSection}>
-            <h1 style={styles.analysisTitle}>{analysisName}</h1>
-            <div style={styles.analysisType}>{scanType.toUpperCase()} Analysis</div>
-          </div>
-
-          {/* Results Container */}
-          <div style={styles.resultsContainer}>
-            {/* Left Column - Uploaded Files */}
-            <div style={styles.leftColumn}>
-              <div style={styles.filesSection}>
-                <h2 style={styles.sectionTitle}>Uploaded Files ({files.length})</h2>
-                <div style={styles.fileList}>
-                  {files.map((file, index) => (
-                    <div key={index} style={styles.fileItem}>
-                      <FiFile style={styles.fileIcon} />
-                      <div style={styles.fileInfo}>
-                        <div style={styles.fileName}>{file.name}</div>
-                        <div style={styles.fileType}>{file.name.split('.').pop().toUpperCase()} file</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {/* Results Table */}
+          <div style={styles.resultsTable}>
+            <div style={styles.tableHeader}>
+              <div style={styles.typeColumn}>Type</div>
+              <div style={styles.nameColumn}>Name</div>
+              <div style={styles.dateColumn}>Date</div>
+              <div style={styles.percentColumn}>Plagiarism %</div>
             </div>
-
-            {/* Right Column - Overall Similarity */}
-            <div style={styles.rightColumn}>
-              <div style={styles.similarityBox}>
-                <h3 style={styles.similarityTitle}>Overall Similarity</h3>
-                <div style={styles.similarityScore}>{similarityResults.overallSimilarity}%</div>
-                <div style={styles.similarityLabel}>across all files</div>
-                
-                {/* Visual Similarity Indicator */}
-                <div style={styles.similarityVisual}>
-                  <div style={styles.similarityProgress}></div>
+            
+            {resultsData.length > 0 ? (
+              resultsData.map((item) => (
+                <div key={item.id} style={styles.tableRow}>
+                  <div style={styles.typeColumn}>
+                    {getIconForType(item.type)}
+                    {item.type}
+                  </div>
+                  <div style={styles.nameColumn}>{item.name}</div>
+                  <div style={styles.dateColumn}>{item.date}</div>
+                  <div 
+                    style={{
+                      ...styles.percentColumn,
+                      color: getColorForPercentage(item.plagiarismPercent)
+                    }}
+                  >
+                    {item.plagiarismPercent}%
+                  </div>
                 </div>
-                <div style={styles.similarityLegend}>
-                  <span>0%</span>
-                  <span>100%</span>
-                </div>
-              </div>
-            </div>
+              ))
+            ) : (
+              <div style={styles.noResults}>No files analyzed</div>
+            )}
           </div>
-
-          {/* Back to Dashboard Button */}
-          <button 
-            style={styles.backButton}
-            onClick={() => handleNavigation('dashboard')}
-          >
-            <FiArrowLeft />
-            Back to Dashboard
-          </button>
         </div>
       </div>
     </div>
