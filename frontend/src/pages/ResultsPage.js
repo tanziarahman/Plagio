@@ -73,6 +73,17 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
     }
   };
 
+  const handleFileClick = (fileName) => {
+    navigate('/file-comparison', { 
+      state: { 
+        files, 
+        analysisName, 
+        scanType, 
+        selectedFile: fileName 
+      } 
+    });
+  };
+
   const getColorForPercentage = (percent) => {
     if (percent >= 70) return '#dc2626'; // High plagiarism - red
     if (percent >= 40) return '#ea580c'; // Medium plagiarism - orange
@@ -204,7 +215,12 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
       display: 'flex',
       padding: '12px 15px',
       borderBottom: '1px solid #e2e8f0',
-      alignItems: 'center'
+      alignItems: 'center',
+      cursor: 'pointer',
+      transition: 'background-color 0.2s',
+      ':hover': {
+        backgroundColor: '#f1f5f9'
+      }
     },
     typeColumn: {
       width: '120px',
@@ -285,7 +301,11 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
             
             {resultsData.length > 0 ? (
               resultsData.map((item) => (
-                <div key={item.id} style={styles.tableRow}>
+                <div 
+                  key={item.id} 
+                  style={styles.tableRow}
+                  onClick={() => handleFileClick(item.name)}
+                >
                   <div style={styles.typeColumn}>
                     {getIconForType(item.type)}
                     {item.type}

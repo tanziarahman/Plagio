@@ -6,7 +6,10 @@ import {
   FiSearch,
   FiEye,
   FiDownload,
-  FiTrash2
+  FiTrash2,
+  FiFile,
+  FiCode,
+  FiType
 } from 'react-icons/fi';
 
 const HistoryPage = ({ userEmail = "user@example.com" }) => {
@@ -18,6 +21,8 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
     { id: 1, type: 'Text', name: 'Document1.txt', date: 'Aug 9, 2025' },
     { id: 2, type: 'Code', name: 'script.js', date: 'Aug 8, 2025' },
     { id: 3, type: 'AI', name: 'Essay.pdf', date: 'Aug 7, 2025' },
+    { id: 4, type: 'Text', name: 'Report.docx', date: 'Aug 6, 2025' },
+    { id: 5, type: 'Code', name: 'program.cpp', date: 'Aug 5, 2025' },
   ]);
 
   const filteredScans = scans.filter(scan => 
@@ -34,7 +39,15 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
   };
 
   const handleNewScan = () => {
-    navigate('/plagio-dashboard'); // Navigate to PlagioDashboard
+    navigate('/plagio-dashboard');
+  };
+
+  const getIconForType = (type) => {
+    switch (type.toLowerCase()) {
+      case 'code': return <FiCode style={{ color: '#3498db' }} />;
+      case 'ai': return <FiType style={{ color: '#9c27b0' }} />;
+      default: return <FiFile style={{ color: '#3498db' }} />;
+    }
   };
 
   const styles = {
@@ -79,7 +92,8 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
       borderBottom: '1px solid #34495e',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
-      textOverflow: 'ellipsis'
+      textOverflow: 'ellipsis',
+      cursor: 'pointer'
     },
     menuItem: {
       padding: '12px 20px',
@@ -184,8 +198,19 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
       borderBottom: '1px solid #ecf0f1',
       alignItems: 'center'
     },
-    column: {
-      flex: 1,
+    typeColumn: {
+      width: '120px',
+      padding: '0 10px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    },
+    nameColumn: {
+      flex: 2,
+      padding: '0 10px'
+    },
+    dateColumn: {
+      width: '120px',
       padding: '0 10px'
     },
     smallColumn: {
@@ -234,12 +259,12 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
         </button>
         
         <div>
-          <div style={styles.logo}>
+          <div style={styles.logo} onClick={() => navigate('/plagio-dashboard')}>
             {sidebarCollapsed ? 'P' : 'PLAGIO'}
           </div>
           <div 
             style={styles.menuItem}
-            onClick={() => navigate('/plagio-dashboard')} // Changed to navigate to dashboard
+            onClick={() => navigate('/plagio-dashboard')}
           >
             {sidebarCollapsed ? 'N' : 'New Scan'}
           </div>
@@ -280,7 +305,7 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
           </div>
           <button 
             style={styles.newScanButton} 
-            onClick={handleNewScan} // Updated to use handleNewScan function
+            onClick={handleNewScan}
           >
             + New Scan
           </button>
@@ -289,18 +314,21 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
         {/* Scan History */}
         <div style={styles.scanHistory}>
           <div style={styles.historyHeader}>
-            <div style={styles.column}>Type</div>
-            <div style={styles.column}>Name</div>
-            <div style={styles.column}>Date</div>
+            <div style={styles.typeColumn}>Type</div>
+            <div style={styles.nameColumn}>Name</div>
+            <div style={styles.dateColumn}>Date</div>
             <div style={styles.smallColumn}>View</div>
             <div style={styles.smallColumn}>Actions</div>
           </div>
 
           {filteredScans.map(scan => (
             <div key={scan.id} style={styles.historyRow}>
-              <div style={styles.column}>{scan.type}</div>
-              <div style={styles.column}>{scan.name}</div>
-              <div style={styles.column}>{scan.date}</div>
+              <div style={styles.typeColumn}>
+                {getIconForType(scan.type)}
+                {scan.type}
+              </div>
+              <div style={styles.nameColumn}>{scan.name}</div>
+              <div style={styles.dateColumn}>{scan.date}</div>
               <div style={styles.smallColumn}>
                 <button 
                   style={{...styles.actionButton, ...styles.viewButton}}
