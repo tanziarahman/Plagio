@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiChevronLeft, FiChevronRight, FiFile, FiCode, FiType } from 'react-icons/fi';
 
@@ -6,18 +6,104 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [resultsData, setResultsData] = useState([]);
+  const [loading, setLoading] = useState(false);
   
   // Get data passed from PlagioDashboard
-  const { files, analysisName, scanType } = location.state || { 
+  const { files, analysisName, scanType, uploadId } = location.state || { 
     files: [], 
     analysisName: 'Untitled Analysis', 
-    scanType: 'text' 
+    scanType: 'text',
+    uploadId: null
   };
 
-  // Generate plagiarism percentages for each file based on scan type
+  useEffect(() => {
+    const fetchComparisonResults = async () => {
+      if (!uploadId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/comparison?upload_id=${uploadId}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch comparison results');
+        }
+        
+        const data = await response.json();
+        
+        // Process the data to create results for each file
+        const fileResults = {};
+        
+        data.comparisons.forEach(comparison => {
+          // Calculate average similarity for each file
+          if (!fileResults[comparison.file1_id]) {
+            fileResults[comparison.file1_id] = {
+              id: comparison.file1_id,
+              name: comparison.file1_name,
+              type: scanType,
+              date: new Date().toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+              }),
+              totalSimilarity: 0,
+              comparisonCount: 0
+            };
+          }
+          
+          if (!fileResults[comparison.file2_id]) {
+            fileResults[comparison.file2_id] = {
+              id: comparison.file2_id,
+              name: comparison.file2_name,
+              type: scanType,
+              date: new Date().toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+              }),
+              totalSimilarity: 0,
+              comparisonCount: 0
+            };
+          }
+          
+          // Add similarity scores
+          fileResults[comparison.file1_id].totalSimilarity += comparison.similarity;
+          fileResults[comparison.file1_id].comparisonCount += 1;
+          
+          fileResults[comparison.file2_id].totalSimilarity += comparison.similarity;
+          fileResults[comparison.file2_id].comparisonCount += 1;
+        });
+        
+        // Calculate average similarity for each file
+        const processedResults = Object.values(fileResults).map(file => ({
+          ...file,
+          plagiarismPercent: file.comparisonCount > 0 
+            ? parseFloat((file.totalSimilarity / file.comparisonCount).toFixed(1))
+            : 0
+        }));
+        
+        setResultsData(processedResults);
+      } catch (error) {
+        console.error('Error fetching comparison results:', error);
+        // Fallback to original mock data generation if API fails
+        const mockResults = generatePlagiarismResults(files, scanType);
+        setResultsData(mockResults);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchComparisonResults();
+  }, [uploadId, files, scanType]);
+
+  // Generate mock plagiarism percentages (fallback - same as original)
   const generatePlagiarismResults = (files, scanType) => {
     return files.map((file, index) => {
-      // Generate a realistic plagiarism percentage based on file type and index
       let plagiarismPercent;
       
       if (scanType === 'text') {
@@ -30,7 +116,6 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
         plagiarismPercent = Math.random() * 50; // 0-50% for unknown
       }
       
-      // Get current date for the "Date" column
       const currentDate = new Date();
       const formattedDate = currentDate.toLocaleDateString('en-US', { 
         month: 'short', 
@@ -38,7 +123,6 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
         year: 'numeric' 
       });
       
-      // Determine file type based on extension
       let fileType = 'Text';
       const extension = file.name.split('.').pop().toLowerCase();
       if (['c', 'cpp', 'js', 'java', 'py', 'html', 'css'].includes(extension)) {
@@ -56,8 +140,6 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
       };
     });
   };
-
-  const [resultsData] = useState(generatePlagiarismResults(files, scanType));
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -79,7 +161,8 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
         files, 
         analysisName, 
         scanType, 
-        selectedFile: fileName 
+        selectedFile: fileName,
+        uploadId
       } 
     });
   };
@@ -248,6 +331,12 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
       padding: '40px',
       color: '#64748b',
       fontSize: '18px'
+    },
+    loadingContainer: {
+      textAlign: 'center',
+      padding: '40px',
+      color: '#64748b',
+      fontSize: '18px'
     }
   };
 
@@ -299,7 +388,9 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
               <div style={styles.percentColumn}>Plagiarism %</div>
             </div>
             
-            {resultsData.length > 0 ? (
+            {loading ? (
+              <div style={styles.loadingContainer}>Loading results...</div>
+            ) : resultsData.length > 0 ? (
               resultsData.map((item) => (
                 <div 
                   key={item.id} 

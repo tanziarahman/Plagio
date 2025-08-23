@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiChevronLeft, FiChevronRight, FiFile, FiCode, FiArrowLeft } from 'react-icons/fi';
 
@@ -6,70 +6,80 @@ const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [fileContents, setFileContents] = useState({});
+  const [comparisonData, setComparisonData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   
   // Get data passed from ResultsPage
-  const { files, analysisName, scanType, selectedFile } = location.state || { 
-    files: [], 
+  const { analysisName, scanType, selectedFile, uploadId } = location.state || { 
     analysisName: 'Untitled Analysis', 
     scanType: 'text',
-    selectedFile: ''
+    selectedFile: '',
+    uploadId: null
   };
 
-  // Mock data for file content and plagiarism matches
-  const [fileContents] = useState({
-    '111.txt': {
-      content: `This is the content of file 111.txt.
-It contains some original text and some plagiarized content.
-The quick brown fox jumps over the lazy dog. This sentence is commonly used for testing.
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris.
-This is another paragraph that might contain plagiarized material from various sources.
-The quick brown fox jumps over the lazy dog appears again here for demonstration purposes.
-This document has multiple sections that may match with other files in the database.
-Plagiarism detection is an important tool for academic integrity.
-Many institutions use software to identify copied content.`,
-      matches: [
-        { start: 45, end: 118, source: '222.txt', similarity: 92.5 },
-        { start: 119, end: 213, source: '222.txt', similarity: 78.3 },
-        { start: 250, end: 320, source: '333.txt', similarity: 85.2 }
-      ]
-    },
-    '222.txt': {
-      content: `This is the content of file 222.txt.
-It contains text that matches with 111.txt in several places.
-The quick brown fox jumps over the lazy dog. This sentence is commonly used for testing.
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris.
-Vivamus luctus urna sed urna ultricies ac tempor dui sagittis. In condimentum facilisis porta.
-The quick brown fox jumps over the lazy dog appears again here for demonstration purposes.
-Academic institutions take plagiarism very seriously.
-Students should always cite their sources properly.
-Using someone else's work without attribution is considered academic dishonesty.`,
-      matches: [
-        { start: 50, end: 123, source: '111.txt', similarity: 92.5 },
-        { start: 124, end: 218, source: '111.txt', similarity: 78.3 },
-        { start: 280, end: 350, source: '333.txt', similarity: 81.7 }
-      ]
-    },
-    '333.txt': {
-      content: `This is the content of file 333.txt.
-It shares some common phrases with other documents.
-The quick brown fox jumps over the lazy dog. This sentence is commonly used for testing.
-Vivamus luctus urna sed urna ultricies ac tempor dui sagittis.
-Plagiarism can have serious consequences for students and professionals.
-Always ensure you properly attribute any sources you use in your work.
-Academic integrity is fundamental to the educational process.`,
-      matches: [
-        { start: 55, end: 128, source: '111.txt', similarity: 85.2 },
-        { start: 129, end: 200, source: '222.txt', similarity: 81.7 }
-      ]
-    }
-  });
-
   // Initialize state with proper fallback values
-  const initialSelectedFile = selectedFile || (files[0]?.name || '');
-  const initialComparedFile = files.find(file => file.name !== initialSelectedFile)?.name || '';
-  
-  const [currentSelectedFile, setCurrentSelectedFile] = useState(initialSelectedFile);
-  const [comparedFile, setComparedFile] = useState(initialComparedFile);
+  const [currentSelectedFile, setCurrentSelectedFile] = useState(selectedFile);
+  const [comparedFile, setComparedFile] = useState('');
+
+  useEffect(() => {
+    const fetchComparisonData = async () => {
+      if (!uploadId) {
+        setError('No upload ID provided');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/comparison?upload_id=${uploadId}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch comparison data');
+        }
+        
+        const data = await response.json();
+        setComparisonData(data);
+        
+        // Extract file names from the comparison data
+        const fileNames = [];
+        data.comparisons.forEach(comparison => {
+          if (!fileNames.includes(comparison.file1_name)) {
+            fileNames.push(comparison.file1_name);
+          }
+          if (!fileNames.includes(comparison.file2_name)) {
+            fileNames.push(comparison.file2_name);
+          }
+        });
+        
+        // Set initial selected and compared files
+        if (fileNames.length > 0) {
+          if (selectedFile && fileNames.includes(selectedFile)) {
+            setCurrentSelectedFile(selectedFile);
+          } else {
+            setCurrentSelectedFile(fileNames[0]);
+          }
+          
+          // Set the first other file as compared file
+          if (fileNames.length > 1) {
+            const otherFile = fileNames.find(name => name !== currentSelectedFile) || fileNames[1];
+            setComparedFile(otherFile);
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error fetching comparison data:', error);
+        setError('Failed to load comparison data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchComparisonData();
+  }, [uploadId, selectedFile, currentSelectedFile]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -83,7 +93,7 @@ Academic integrity is fundamental to the educational process.`,
     } else if (page === 'dashboard') {
       navigate('/plagio-dashboard');
     } else if (page === 'results') {
-      navigate('/results', { state: { files, analysisName, scanType } });
+      navigate('/results', { state: { analysisName, scanType, uploadId } });
     }
   };
 
@@ -95,62 +105,59 @@ Academic integrity is fundamental to the educational process.`,
     return <FiFile style={{ color: '#3498db' }} />;
   };
 
-  const getSimilarityWithFile = (file1, file2) => {
-    // Find the similarity between two specific files
-    const matches = fileContents[file1]?.matches || [];
-    const match = matches.find(m => m.source === file2);
-    return match ? match.similarity : 0;
+  const getSimilarityBetweenFiles = (file1, file2) => {
+    if (!comparisonData) return 0;
+    
+    const comparison = comparisonData.comparisons.find(comp => 
+      (comp.file1_name === file1 && comp.file2_name === file2) ||
+      (comp.file1_name === file2 && comp.file2_name === file1)
+    );
+    
+    return comparison ? comparison.similarity : 0;
   };
 
-  const highlightColors = [
-    { background: '#FFD6E0', text: '#D32F2F' }, // Baby pink
-    { background: '#D1ECF1', text: '#0C4B5E' }, // Baby blue
-    { background: '#D4EDDA', text: '#155724' }, // Light green
-    { background: '#FFF3CD', text: '#856404' }, // Light yellow
-    { background: '#E8DAEF', text: '#4A235A' }, // Light purple
-  ];
+  const getMatchesForComparison = (file1, file2) => {
+    if (!comparisonData) return [];
+    
+    const comparison = comparisonData.comparisons.find(comp => 
+      comp.file1_name === file1 && comp.file2_name === file2
+    );
+    
+    return comparison ? comparison.matches : [];
+  };
 
-  const highlightPlagiarizedContent = (content, matches, currentComparison) => {
-    if (!matches.length) return content;
+  const highlightPlagiarizedContent = (content, matches) => {
+    if (!matches || matches.length === 0) return content;
     
     let highlightedContent = [];
     let lastIndex = 0;
     
-    // Sort matches by start index
-    const sortedMatches = [...matches].sort((a, b) => a.start - b.start);
+    // Sort matches by index_start
+    const sortedMatches = [...matches].sort((a, b) => a.index_start - b.index_start);
     
-    // Only highlight matches that are relevant to the current comparison
-    const relevantMatches = currentComparison 
-      ? sortedMatches.filter(m => m.source === currentComparison)
-      : sortedMatches;
-    
-    relevantMatches.forEach((match, index) => {
+    sortedMatches.forEach((match, index) => {
       // Add non-highlighted text before the match
-      if (match.start > lastIndex) {
-        highlightedContent.push(content.slice(lastIndex, match.start));
+      if (match.index_start > lastIndex) {
+        highlightedContent.push(content.slice(lastIndex, match.index_start));
       }
-      
-      // Get color based on match index (cycle through colors)
-      const colorIndex = index % highlightColors.length;
-      const color = highlightColors[colorIndex];
       
       // Add highlighted text
       highlightedContent.push(
         <span 
-          key={match.start} 
+          key={index} 
           style={{ 
-            backgroundColor: color.background, 
-            color: color.text, 
+            backgroundColor: '#FFD6E0', 
+            color: '#D32F2F', 
             padding: '2px 0',
             borderRadius: '3px',
             fontWeight: '500'
           }}
         >
-          {content.slice(match.start, match.end)}
+          {content.slice(match.index_start, match.index_start + match.length)}
         </span>
       );
       
-      lastIndex = match.end;
+      lastIndex = match.index_start + match.length;
     });
     
     // Add remaining text after the last match
@@ -159,6 +166,22 @@ Academic integrity is fundamental to the educational process.`,
     }
     
     return highlightedContent.length ? highlightedContent : content;
+  };
+
+  const getOtherFiles = () => {
+    if (!comparisonData) return [];
+    
+    const fileNames = [];
+    comparisonData.comparisons.forEach(comparison => {
+      if (!fileNames.includes(comparison.file1_name)) {
+        fileNames.push(comparison.file1_name);
+      }
+      if (!fileNames.includes(comparison.file2_name)) {
+        fileNames.push(comparison.file2_name);
+      }
+    });
+    
+    return fileNames.filter(name => name !== currentSelectedFile);
   };
 
   const styles = {
@@ -267,7 +290,6 @@ Academic integrity is fundamental to the educational process.`,
       flex: 1,
       marginBottom: '70px'
     },
-    // Left panel - File content with highlights
     leftPanel: {
       flex: 2,
       display: 'flex',
@@ -295,7 +317,6 @@ Academic integrity is fundamental to the educational process.`,
       lineHeight: '1.5',
       fontSize: '14px'
     },
-    // Right panel - Similarity and other files
     rightPanel: {
       flex: 1,
       display: 'flex',
@@ -380,12 +401,42 @@ Academic integrity is fundamental to the educational process.`,
     },
     backButtonHover: {
       backgroundColor: '#2980b9'
+    },
+    loadingContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '200px'
+    },
+    errorContainer: {
+      padding: '20px',
+      backgroundColor: '#fee',
+      color: '#c53030',
+      borderRadius: '5px',
+      textAlign: 'center'
     }
   };
 
-  const currentFileContent = fileContents[currentSelectedFile] || { content: 'No content available', matches: [] };
-  const similarityScore = getSimilarityWithFile(currentSelectedFile, comparedFile);
-  const otherFiles = files.filter(file => file.name !== currentSelectedFile);
+  const similarityScore = getSimilarityBetweenFiles(currentSelectedFile, comparedFile);
+  const otherFiles = getOtherFiles();
+  const matches = getMatchesForComparison(currentSelectedFile, comparedFile);
+
+  // Get the content for the currently selected file
+  const getCurrentFileContent = () => {
+    if (!comparisonData) return '';
+    
+    const comparison = comparisonData.comparisons.find(comp => 
+      comp.file1_name === currentSelectedFile || comp.file2_name === currentSelectedFile
+    );
+    
+    if (!comparison) return 'Content not available';
+    
+    return currentSelectedFile === comparison.file1_name 
+      ? comparison.file1_text 
+      : comparison.file2_text;
+  };
+
+  const currentFileContent = getCurrentFileContent();
 
   return (
     <div style={styles.dashboard}>
@@ -434,68 +485,74 @@ Academic integrity is fundamental to the educational process.`,
         </div>
 
         <div style={styles.contentArea}>
-          {/* Comparison Container */}
-          <div style={styles.comparisonContainer}>
-            {/* Left Panel - File Content with Highlights */}
-            <div style={styles.leftPanel}>
-              <div style={styles.fileHeader}>
-                {getIconForType(currentSelectedFile)}
-                {currentSelectedFile}
-              </div>
-              <div style={styles.fileContent}>
-                {highlightPlagiarizedContent(
-                  currentFileContent.content, 
-                  currentFileContent.matches,
-                  comparedFile
-                )}
-              </div>
-            </div>
-
-            {/* Right Panel - Similarity and Other Files */}
-            <div style={styles.rightPanel}>
-              {/* Similarity Box */}
-              <div style={styles.similarityBox}>
-                <div style={styles.similarityTitle}>Plagiarism Similarity</div>
-                <div style={styles.similarityScore}>{similarityScore.toFixed(1)}%</div>
-                <div style={styles.similarityLabel}>
-                  between {currentSelectedFile} and {comparedFile}
+          {loading ? (
+            <div style={styles.loadingContainer}>Loading comparison data...</div>
+          ) : error ? (
+            <div style={styles.errorContainer}>{error}</div>
+          ) : !comparisonData ? (
+            <div style={styles.errorContainer}>No comparison data available</div>
+          ) : (
+            <>
+              {/* Comparison Container */}
+              <div style={styles.comparisonContainer}>
+                {/* Left Panel - File Content with Highlights */}
+                <div style={styles.leftPanel}>
+                  <div style={styles.fileHeader}>
+                    {getIconForType(currentSelectedFile)}
+                    {currentSelectedFile}
+                  </div>
+                  <div style={styles.fileContent}>
+                    {highlightPlagiarizedContent(currentFileContent, matches)}
+                  </div>
                 </div>
-              </div>
 
-              {/* Other Files Box */}
-              <div style={styles.otherFilesBox}>
-                <div style={styles.otherFilesHeader}>Other Files</div>
-                <div style={styles.otherFilesList}>
-                  {otherFiles.map((file, index) => (
-                    <div 
-                      key={index}
-                      style={{
-                        ...styles.otherFileItem,
-                        ...(file.name === comparedFile && styles.selectedOtherFile)
-                      }}
-                      onMouseOver={(e) => e.target.style.backgroundColor = styles.otherFileItemHover.backgroundColor}
-                      onMouseOut={(e) => e.target.style.backgroundColor = (file.name === comparedFile ? styles.selectedOtherFile.backgroundColor : '')}
-                      onClick={() => setComparedFile(file.name)}
-                    >
-                      {getIconForType(file.name)}
-                      {file.name}
+                {/* Right Panel - Similarity and Other Files */}
+                <div style={styles.rightPanel}>
+                  {/* Similarity Box */}
+                  <div style={styles.similarityBox}>
+                    <div style={styles.similarityTitle}>Plagiarism Similarity</div>
+                    <div style={styles.similarityScore}>{similarityScore.toFixed(1)}%</div>
+                    <div style={styles.similarityLabel}>
+                      between {currentSelectedFile} and {comparedFile}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Other Files Box */}
+                  <div style={styles.otherFilesBox}>
+                    <div style={styles.otherFilesHeader}>Other Files</div>
+                    <div style={styles.otherFilesList}>
+                      {otherFiles.map((file, index) => (
+                        <div 
+                          key={index}
+                          style={{
+                            ...styles.otherFileItem,
+                            ...(file === comparedFile && styles.selectedOtherFile)
+                          }}
+                          onMouseOver={(e) => e.target.style.backgroundColor = styles.otherFileItemHover.backgroundColor}
+                          onMouseOut={(e) => e.target.style.backgroundColor = (file === comparedFile ? styles.selectedOtherFile.backgroundColor : '')}
+                          onClick={() => setComparedFile(file)}
+                        >
+                          {getIconForType(file)}
+                          {file}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Back Button at Bottom Left (outside the file content box) */}
-          <button 
-            style={styles.backButton}
-            onMouseOver={(e) => e.target.style.backgroundColor = styles.backButtonHover.backgroundColor}
-            onMouseOut={(e) => e.target.style.backgroundColor = styles.backButton.backgroundColor}
-            onClick={() => handleNavigation('results')}
-          >
-            <FiArrowLeft />
-            Back to Results
-          </button>
+              {/* Back Button at Bottom Left */}
+              <button 
+                style={styles.backButton}
+                onMouseOver={(e) => e.target.style.backgroundColor = styles.backButtonHover.backgroundColor}
+                onMouseOut={(e) => e.target.style.backgroundColor = styles.backButton.backgroundColor}
+                onClick={() => handleNavigation('results')}
+              >
+                <FiArrowLeft />
+                Back to Results
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

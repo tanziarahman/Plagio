@@ -15,6 +15,7 @@ const PlagioDashboard = ({ userEmail = "user@example.com", defaultScanType = nul
   const [isScanning, setIsScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
   const [showFileWarning, setShowFileWarning] = useState(false);
+  const [uploadId, setUploadId] = useState(null);
 
   // Embedded CSS Animation
   const GlobalStyles = () => (
@@ -113,7 +114,7 @@ const PlagioDashboard = ({ userEmail = "user@example.com", defaultScanType = nul
     }
   };
 
-  const handleScan = () => {
+  const handleScan = async () => {
     if (!scanType) return setUploadError('Select scan type first');
     if (!analysisName.trim()) return setAnalysisError('Enter analysis name');
     
@@ -126,21 +127,70 @@ const PlagioDashboard = ({ userEmail = "user@example.com", defaultScanType = nul
     setUploadError('');
     setIsScanning(true);
     
-    setTimeout(() => {
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('scanType', scanType);
+      formData.append('analysis_name', analysisName);
+      
+      // Add all files
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      
+      // Send request to backend
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+      
+      const result = await response.json();
+      setUploadId(result.upload_id);
+      
+      // If it's an AI scan, we're done
+      if (scanType === 'ai') {
+        setScanComplete(true);
+      } else {
+        // For text and code, initiate comparison
+        const compareResponse = await fetch('/api/compare-txt', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ upload_id: result.upload_id }),
+          credentials: 'include'
+        });
+        
+        if (!compareResponse.ok) {
+          const errorData = await compareResponse.json();
+          throw new Error(errorData.error || 'Comparison failed');
+        }
+        
+        setScanComplete(true);
+      }
+    } catch (error) {
+      setUploadError(error.message || 'An error occurred during scanning');
+      setScanComplete(false);
+    } finally {
       setIsScanning(false);
-      setScanComplete(true);
-    }, 2000);
+    }
   };
 
   const handleViewResults = () => {
-    navigate('/results', { state: { files, analysisName, scanType } });
+    navigate('/results', { state: { files, analysisName, scanType, uploadId } });
   };
 
   const handleNavigateToHistory = () => {
     navigate('/history');
   };
 
-  // Styles
+  // Styles (same as original)
   const styles = {
     dashboard: {
       display: 'flex',
@@ -181,7 +231,7 @@ const PlagioDashboard = ({ userEmail = "user@example.com", defaultScanType = nul
       padding: '0 20px 20px',
       fontSize: '24px',
       fontWeight: 'bold',
-      borderBottom: '1px solid #34495e',
+      borderBottom: '1px solid ',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis'
