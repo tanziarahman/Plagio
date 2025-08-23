@@ -116,11 +116,11 @@ const FileComparisonPage = () => {
   };
 
   const highlightColors = [
-    { background: '#FFD6E0', text: '#D32F2F' }, // Baby pink
-    { background: '#D1ECF1', text: '#0C4B5E' }, // Baby blue
-    { background: '#D4EDDA', text: '#155724' }, // Light green
-    { background: '#FFF3CD', text: '#856404' }, // Light yellow
-    { background: '#E8DAEF', text: '#4A235A' }, // Light purple
+    { background: '#FFD6E0', text: '#f47da6ff' }, // Baby pink
+    { background: '#D1ECF1', text: '#90e3fdff' }, // Baby blue
+    { background: '#D4EDDA', text: '#9ff0b2ff' }, // Light green
+    { background: '#FFF3CD', text: '#f8d260ff' }, // Light yellow
+    { background: '#E8DAEF', text: '#cd7bedff' }, // Light purple
   ];
 
   const highlightPlagiarizedContent = (content, matches, currentComparison) => {
