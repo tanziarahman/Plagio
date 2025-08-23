@@ -1,85 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiChevronLeft, FiChevronRight, FiFile, FiCode, FiArrowLeft } from 'react-icons/fi';
+import axios from 'axios';
 
-const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
+const FileComparisonPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [fileContents, setFileContents] = useState({});
-  const [comparisonData, setComparisonData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   
   // Get data passed from ResultsPage
-  const { analysisName, scanType, selectedFile, uploadId } = location.state || { 
+  const { files, analysisName, scanType, selectedFile, uploadId, fileId } = location.state || { 
+    files: [], 
     analysisName: 'Untitled Analysis', 
     scanType: 'text',
     selectedFile: '',
-    uploadId: null
+    uploadId: null,
+    fileId: null
   };
 
   // Initialize state with proper fallback values
-  const [currentSelectedFile, setCurrentSelectedFile] = useState(selectedFile);
-  const [comparedFile, setComparedFile] = useState('');
+  const initialSelectedFile = selectedFile || (files[0]?.name || '');
+  const initialComparedFile = files.find(file => file.name !== initialSelectedFile)?.name || '';
+  
+  const [currentSelectedFile, setCurrentSelectedFile] = useState(initialSelectedFile);
+  const [comparedFile, setComparedFile] = useState(initialComparedFile);
 
   useEffect(() => {
     const fetchComparisonData = async () => {
-      if (!uploadId) {
-        setError('No upload ID provided');
-        setLoading(false);
-        return;
-      }
-
       try {
-        setLoading(true);
-        const response = await fetch(`/api/comparison?upload_id=${uploadId}`, {
-          credentials: 'include'
+        if (!uploadId || !fileId) return;
+        
+        const response = await axios.get('/api/comparison', {
+          params: { upload_id: uploadId }
         });
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch comparison data');
-        }
-        
-        const data = await response.json();
-        setComparisonData(data);
-        
-        // Extract file names from the comparison data
-        const fileNames = [];
-        data.comparisons.forEach(comparison => {
-          if (!fileNames.includes(comparison.file1_name)) {
-            fileNames.push(comparison.file1_name);
-          }
-          if (!fileNames.includes(comparison.file2_name)) {
-            fileNames.push(comparison.file2_name);
-          }
-        });
-        
-        // Set initial selected and compared files
-        if (fileNames.length > 0) {
-          if (selectedFile && fileNames.includes(selectedFile)) {
-            setCurrentSelectedFile(selectedFile);
-          } else {
-            setCurrentSelectedFile(fileNames[0]);
-          }
+        if (response.data) {
+          // Process the comparison data to match your frontend format
+          const processedData = {};
+          response.data.comparisons.forEach(comp => {
+            if (comp.file1_id === fileId) {
+              processedData[comp.file1_name] = {
+                content: comp.file1_text,
+                matches: comp.matches.map(match => ({
+                  start: match.index_start,
+                  end: match.index_start + match.length,
+                  source: comp.file2_name,
+                  similarity: comp.similarity
+                }))
+              };
+            }
+          });
           
-          // Set the first other file as compared file
-          if (fileNames.length > 1) {
-            const otherFile = fileNames.find(name => name !== currentSelectedFile) || fileNames[1];
-            setComparedFile(otherFile);
-          }
+          setFileContents(processedData);
         }
-        
       } catch (error) {
         console.error('Error fetching comparison data:', error);
-        setError('Failed to load comparison data');
       } finally {
         setLoading(false);
       }
     };
 
+    const fetchUserEmail = async () => {
+      try {
+        const response = await axios.get('/api/user');
+        if (response.data && response.data.email) {
+          setUserEmail(response.data.email);
+        }
+      } catch (error) {
+        console.error('Error fetching user email:', error);
+      }
+    };
+
     fetchComparisonData();
-  }, [uploadId, selectedFile, currentSelectedFile]);
+    fetchUserEmail();
+  }, [location.state, fileId, uploadId]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -93,7 +90,7 @@ const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
     } else if (page === 'dashboard') {
       navigate('/plagio-dashboard');
     } else if (page === 'results') {
-      navigate('/results', { state: { analysisName, scanType, uploadId } });
+      navigate('/results', { state: { files, analysisName, scanType, uploadId } });
     }
   };
 
@@ -105,59 +102,68 @@ const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
     return <FiFile style={{ color: '#3498db' }} />;
   };
 
-  const getSimilarityBetweenFiles = (file1, file2) => {
-    if (!comparisonData) return 0;
-    
-    const comparison = comparisonData.comparisons.find(comp => 
-      (comp.file1_name === file1 && comp.file2_name === file2) ||
-      (comp.file1_name === file2 && comp.file2_name === file1)
+  const getSimilarityWithFile = (file1, file2) => {
+    // Find the comparison between two specific files
+    const comparison = Object.values(fileContents).find(content => 
+      content.matches.some(m => m.source === file2)
     );
     
-    return comparison ? comparison.similarity : 0;
+    if (comparison) {
+      const match = comparison.matches.find(m => m.source === file2);
+      return match ? match.similarity : 0;
+    }
+    return 0;
   };
 
-  const getMatchesForComparison = (file1, file2) => {
-    if (!comparisonData) return [];
-    
-    const comparison = comparisonData.comparisons.find(comp => 
-      comp.file1_name === file1 && comp.file2_name === file2
-    );
-    
-    return comparison ? comparison.matches : [];
-  };
+  const highlightColors = [
+    { background: '#FFD6E0', text: '#D32F2F' }, // Baby pink
+    { background: '#D1ECF1', text: '#0C4B5E' }, // Baby blue
+    { background: '#D4EDDA', text: '#155724' }, // Light green
+    { background: '#FFF3CD', text: '#856404' }, // Light yellow
+    { background: '#E8DAEF', text: '#4A235A' }, // Light purple
+  ];
 
-  const highlightPlagiarizedContent = (content, matches) => {
-    if (!matches || matches.length === 0) return content;
+  const highlightPlagiarizedContent = (content, matches, currentComparison) => {
+    if (!matches.length) return content;
     
     let highlightedContent = [];
     let lastIndex = 0;
     
-    // Sort matches by index_start
-    const sortedMatches = [...matches].sort((a, b) => a.index_start - b.index_start);
+    // Sort matches by start index
+    const sortedMatches = [...matches].sort((a, b) => a.start - b.start);
     
-    sortedMatches.forEach((match, index) => {
+    // Only highlight matches that are relevant to the current comparison
+    const relevantMatches = currentComparison 
+      ? sortedMatches.filter(m => m.source === currentComparison)
+      : sortedMatches;
+    
+    relevantMatches.forEach((match, index) => {
       // Add non-highlighted text before the match
-      if (match.index_start > lastIndex) {
-        highlightedContent.push(content.slice(lastIndex, match.index_start));
+      if (match.start > lastIndex) {
+        highlightedContent.push(content.slice(lastIndex, match.start));
       }
+      
+      // Get color based on match index (cycle through colors)
+      const colorIndex = index % highlightColors.length;
+      const color = highlightColors[colorIndex];
       
       // Add highlighted text
       highlightedContent.push(
         <span 
-          key={index} 
+          key={match.start} 
           style={{ 
-            backgroundColor: '#FFD6E0', 
-            color: '#D32F2F', 
+            backgroundColor: color.background, 
+            color: color.text, 
             padding: '2px 0',
             borderRadius: '3px',
             fontWeight: '500'
           }}
         >
-          {content.slice(match.index_start, match.index_start + match.length)}
+          {content.slice(match.start, match.end)}
         </span>
       );
       
-      lastIndex = match.index_start + match.length;
+      lastIndex = match.end;
     });
     
     // Add remaining text after the last match
@@ -166,22 +172,6 @@ const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
     }
     
     return highlightedContent.length ? highlightedContent : content;
-  };
-
-  const getOtherFiles = () => {
-    if (!comparisonData) return [];
-    
-    const fileNames = [];
-    comparisonData.comparisons.forEach(comparison => {
-      if (!fileNames.includes(comparison.file1_name)) {
-        fileNames.push(comparison.file1_name);
-      }
-      if (!fileNames.includes(comparison.file2_name)) {
-        fileNames.push(comparison.file2_name);
-      }
-    });
-    
-    return fileNames.filter(name => name !== currentSelectedFile);
   };
 
   const styles = {
@@ -290,6 +280,7 @@ const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
       flex: 1,
       marginBottom: '70px'
     },
+    // Left panel - File content with highlights
     leftPanel: {
       flex: 2,
       display: 'flex',
@@ -317,6 +308,7 @@ const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
       lineHeight: '1.5',
       fontSize: '14px'
     },
+    // Right panel - Similarity and other files
     rightPanel: {
       flex: 1,
       display: 'flex',
@@ -401,42 +393,12 @@ const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
     },
     backButtonHover: {
       backgroundColor: '#2980b9'
-    },
-    loadingContainer: {
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      height: '200px'
-    },
-    errorContainer: {
-      padding: '20px',
-      backgroundColor: '#fee',
-      color: '#c53030',
-      borderRadius: '5px',
-      textAlign: 'center'
     }
   };
 
-  const similarityScore = getSimilarityBetweenFiles(currentSelectedFile, comparedFile);
-  const otherFiles = getOtherFiles();
-  const matches = getMatchesForComparison(currentSelectedFile, comparedFile);
-
-  // Get the content for the currently selected file
-  const getCurrentFileContent = () => {
-    if (!comparisonData) return '';
-    
-    const comparison = comparisonData.comparisons.find(comp => 
-      comp.file1_name === currentSelectedFile || comp.file2_name === currentSelectedFile
-    );
-    
-    if (!comparison) return 'Content not available';
-    
-    return currentSelectedFile === comparison.file1_name 
-      ? comparison.file1_text 
-      : comparison.file2_text;
-  };
-
-  const currentFileContent = getCurrentFileContent();
+  const currentFileContent = fileContents[currentSelectedFile] || { content: 'No content available', matches: [] };
+  const similarityScore = getSimilarityWithFile(currentSelectedFile, comparedFile);
+  const otherFiles = files.filter(file => file.name !== currentSelectedFile);
 
   return (
     <div style={styles.dashboard}>
@@ -485,74 +447,68 @@ const FileComparisonPage = ({ userEmail = "user@example.com" }) => {
         </div>
 
         <div style={styles.contentArea}>
-          {loading ? (
-            <div style={styles.loadingContainer}>Loading comparison data...</div>
-          ) : error ? (
-            <div style={styles.errorContainer}>{error}</div>
-          ) : !comparisonData ? (
-            <div style={styles.errorContainer}>No comparison data available</div>
-          ) : (
-            <>
-              {/* Comparison Container */}
-              <div style={styles.comparisonContainer}>
-                {/* Left Panel - File Content with Highlights */}
-                <div style={styles.leftPanel}>
-                  <div style={styles.fileHeader}>
-                    {getIconForType(currentSelectedFile)}
-                    {currentSelectedFile}
-                  </div>
-                  <div style={styles.fileContent}>
-                    {highlightPlagiarizedContent(currentFileContent, matches)}
-                  </div>
-                </div>
+          {/* Comparison Container */}
+          <div style={styles.comparisonContainer}>
+            {/* Left Panel - File Content with Highlights */}
+            <div style={styles.leftPanel}>
+              <div style={styles.fileHeader}>
+                {getIconForType(currentSelectedFile)}
+                {currentSelectedFile}
+              </div>
+              <div style={styles.fileContent}>
+                {highlightPlagiarizedContent(
+                  currentFileContent.content, 
+                  currentFileContent.matches,
+                  comparedFile
+                )}
+              </div>
+            </div>
 
-                {/* Right Panel - Similarity and Other Files */}
-                <div style={styles.rightPanel}>
-                  {/* Similarity Box */}
-                  <div style={styles.similarityBox}>
-                    <div style={styles.similarityTitle}>Plagiarism Similarity</div>
-                    <div style={styles.similarityScore}>{similarityScore.toFixed(1)}%</div>
-                    <div style={styles.similarityLabel}>
-                      between {currentSelectedFile} and {comparedFile}
-                    </div>
-                  </div>
-
-                  {/* Other Files Box */}
-                  <div style={styles.otherFilesBox}>
-                    <div style={styles.otherFilesHeader}>Other Files</div>
-                    <div style={styles.otherFilesList}>
-                      {otherFiles.map((file, index) => (
-                        <div 
-                          key={index}
-                          style={{
-                            ...styles.otherFileItem,
-                            ...(file === comparedFile && styles.selectedOtherFile)
-                          }}
-                          onMouseOver={(e) => e.target.style.backgroundColor = styles.otherFileItemHover.backgroundColor}
-                          onMouseOut={(e) => e.target.style.backgroundColor = (file === comparedFile ? styles.selectedOtherFile.backgroundColor : '')}
-                          onClick={() => setComparedFile(file)}
-                        >
-                          {getIconForType(file)}
-                          {file}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+            {/* Right Panel - Similarity and Other Files */}
+            <div style={styles.rightPanel}>
+              {/* Similarity Box */}
+              <div style={styles.similarityBox}>
+                <div style={styles.similarityTitle}>Plagiarism Similarity</div>
+                <div style={styles.similarityScore}>{similarityScore.toFixed(1)}%</div>
+                <div style={styles.similarityLabel}>
+                  between {currentSelectedFile} and {comparedFile}
                 </div>
               </div>
 
-              {/* Back Button at Bottom Left */}
-              <button 
-                style={styles.backButton}
-                onMouseOver={(e) => e.target.style.backgroundColor = styles.backButtonHover.backgroundColor}
-                onMouseOut={(e) => e.target.style.backgroundColor = styles.backButton.backgroundColor}
-                onClick={() => handleNavigation('results')}
-              >
-                <FiArrowLeft />
-                Back to Results
-              </button>
-            </>
-          )}
+              {/* Other Files Box */}
+              <div style={styles.otherFilesBox}>
+                <div style={styles.otherFilesHeader}>Other Files</div>
+                <div style={styles.otherFilesList}>
+                  {otherFiles.map((file, index) => (
+                    <div 
+                      key={index}
+                      style={{
+                        ...styles.otherFileItem,
+                        ...(file.name === comparedFile && styles.selectedOtherFile)
+                      }}
+                      onMouseOver={(e) => e.target.style.backgroundColor = styles.otherFileItemHover.backgroundColor}
+                      onMouseOut={(e) => e.target.style.backgroundColor = (file.name === comparedFile ? styles.selectedOtherFile.backgroundColor : '')}
+                      onClick={() => setComparedFile(file.name)}
+                    >
+                      {getIconForType(file.name)}
+                      {file.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Back Button at Bottom Left (outside the file content box) */}
+          <button 
+            style={styles.backButton}
+            onMouseOver={(e) => e.target.style.backgroundColor = styles.backButtonHover.backgroundColor}
+            onMouseOut={(e) => e.target.style.backgroundColor = styles.backButton.backgroundColor}
+            onClick={() => handleNavigation('results')}
+          >
+            <FiArrowLeft />
+            Back to Results
+          </button>
         </div>
       </div>
     </div>

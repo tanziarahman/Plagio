@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiChevronLeft, FiChevronRight, FiFile, FiCode, FiType } from 'react-icons/fi';
+import axios from 'axios';
 
-const ResultsPage = ({ userEmail = "user@example.com" }) => {
+const ResultsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [resultsData, setResultsData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState('');
   
   // Get data passed from PlagioDashboard
   const { files, analysisName, scanType, uploadId } = location.state || { 
@@ -18,128 +20,56 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
   };
 
   useEffect(() => {
-    const fetchComparisonResults = async () => {
-      if (!uploadId) {
-        setLoading(false);
-        return;
-      }
-
+    const fetchResults = async () => {
       try {
-        setLoading(true);
-        const response = await fetch(`/api/comparison?upload_id=${uploadId}`, {
-          credentials: 'include'
+        if (!uploadId) return;
+        
+        // First, trigger the comparison
+        await axios.post('/api/compare-txt', {
+          upload_id: uploadId
         });
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch comparison results');
+        // Then get the average similarity results
+        const response = await axios.get('/api/avg-similarity', {
+          params: { upload_id: uploadId }
+        });
+        
+        if (response.data) {
+          setResultsData(response.data.map(item => ({
+            id: item.file_id,
+            type: scanType.charAt(0).toUpperCase() + scanType.slice(1),
+            name: item.file_name,
+            date: new Date().toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric', 
+              year: 'numeric' 
+            }),
+            plagiarismPercent: item.average_similarity
+          })));
         }
-        
-        const data = await response.json();
-        
-        // Process the data to create results for each file
-        const fileResults = {};
-        
-        data.comparisons.forEach(comparison => {
-          // Calculate average similarity for each file
-          if (!fileResults[comparison.file1_id]) {
-            fileResults[comparison.file1_id] = {
-              id: comparison.file1_id,
-              name: comparison.file1_name,
-              type: scanType,
-              date: new Date().toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-              }),
-              totalSimilarity: 0,
-              comparisonCount: 0
-            };
-          }
-          
-          if (!fileResults[comparison.file2_id]) {
-            fileResults[comparison.file2_id] = {
-              id: comparison.file2_id,
-              name: comparison.file2_name,
-              type: scanType,
-              date: new Date().toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-              }),
-              totalSimilarity: 0,
-              comparisonCount: 0
-            };
-          }
-          
-          // Add similarity scores
-          fileResults[comparison.file1_id].totalSimilarity += comparison.similarity;
-          fileResults[comparison.file1_id].comparisonCount += 1;
-          
-          fileResults[comparison.file2_id].totalSimilarity += comparison.similarity;
-          fileResults[comparison.file2_id].comparisonCount += 1;
-        });
-        
-        // Calculate average similarity for each file
-        const processedResults = Object.values(fileResults).map(file => ({
-          ...file,
-          plagiarismPercent: file.comparisonCount > 0 
-            ? parseFloat((file.totalSimilarity / file.comparisonCount).toFixed(1))
-            : 0
-        }));
-        
-        setResultsData(processedResults);
       } catch (error) {
-        console.error('Error fetching comparison results:', error);
-        // Fallback to original mock data generation if API fails
-        const mockResults = generatePlagiarismResults(files, scanType);
-        setResultsData(mockResults);
+        console.error('Error fetching results:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchComparisonResults();
-  }, [uploadId, files, scanType]);
+    const fetchUserEmail = async () => {
+      try {
+        const response = await axios.get('/api/user');
+        if (response.data && response.data.email) {
+          setUserEmail(response.data.email);
+        }
+      } catch (error) {
+        console.error('Error fetching user email:', error);
+      }
+    };
 
-  // Generate mock plagiarism percentages (fallback - same as original)
-  const generatePlagiarismResults = (files, scanType) => {
-    return files.map((file, index) => {
-      let plagiarismPercent;
-      
-      if (scanType === 'text') {
-        plagiarismPercent = Math.random() * 50 + 10; // 10-60% for text
-      } else if (scanType === 'code') {
-        plagiarismPercent = Math.random() * 40 + 5; // 5-45% for code
-      } else if (scanType === 'ai') {
-        plagiarismPercent = Math.random() * 30 + 15; // 15-45% for AI
-      } else {
-        plagiarismPercent = Math.random() * 50; // 0-50% for unknown
-      }
-      
-      const currentDate = new Date();
-      const formattedDate = currentDate.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
-      
-      let fileType = 'Text';
-      const extension = file.name.split('.').pop().toLowerCase();
-      if (['c', 'cpp', 'js', 'java', 'py', 'html', 'css'].includes(extension)) {
-        fileType = 'Code';
-      } else if (['pdf', 'docx', 'txt'].includes(extension)) {
-        fileType = 'Text';
-      }
-      
-      return {
-        id: index,
-        type: fileType,
-        name: file.name,
-        date: formattedDate,
-        plagiarismPercent: parseFloat(plagiarismPercent.toFixed(1))
-      };
-    });
-  };
+    if (uploadId) {
+      fetchResults();
+    }
+    fetchUserEmail();
+  }, [location.state, scanType, uploadId]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -155,14 +85,15 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
     }
   };
 
-  const handleFileClick = (fileName) => {
+  const handleFileClick = (fileId, fileName) => {
     navigate('/file-comparison', { 
       state: { 
         files, 
         analysisName, 
         scanType, 
         selectedFile: fileName,
-        uploadId
+        uploadId: uploadId,
+        fileId: fileId
       } 
     });
   };
@@ -331,12 +262,6 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
       padding: '40px',
       color: '#64748b',
       fontSize: '18px'
-    },
-    loadingContainer: {
-      textAlign: 'center',
-      padding: '40px',
-      color: '#64748b',
-      fontSize: '18px'
     }
   };
 
@@ -388,14 +313,12 @@ const ResultsPage = ({ userEmail = "user@example.com" }) => {
               <div style={styles.percentColumn}>Plagiarism %</div>
             </div>
             
-            {loading ? (
-              <div style={styles.loadingContainer}>Loading results...</div>
-            ) : resultsData.length > 0 ? (
+            {resultsData.length > 0 ? (
               resultsData.map((item) => (
                 <div 
                   key={item.id} 
                   style={styles.tableRow}
-                  onClick={() => handleFileClick(item.name)}
+                  onClick={() => handleFileClick(item.id, item.name)}
                 >
                   <div style={styles.typeColumn}>
                     {getIconForType(item.type)}

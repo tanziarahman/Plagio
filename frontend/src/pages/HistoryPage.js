@@ -11,58 +11,53 @@ import {
   FiCode,
   FiType
 } from 'react-icons/fi';
+import axios from 'axios';
 
-const HistoryPage = ({ userEmail = "user@example.com" }) => {
+const HistoryPage = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [scans, setScans] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
     const fetchUploads = async () => {
       try {
-        setLoading(true);
-        const response = await fetch('/api/uploads', {
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch upload history');
+        const response = await axios.get('/api/uploads');
+        if (response.data && response.data.uploads) {
+          setScans(response.data.uploads.map(upload => ({
+            id: upload.upload_id,
+            type: upload.comparison_type,
+            name: upload.session_name,
+            date: new Date(upload.created_at).toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric', 
+              year: 'numeric' 
+            }),
+            fileCount: upload.file_count
+          })));
         }
-        
-        const data = await response.json();
-        
-        // Transform the API data to match the original format
-        const transformedScans = data.uploads.map(upload => ({
-          id: upload.upload_id,
-          type: upload.comparison_type,
-          name: upload.session_name,
-          date: new Date(upload.created_at).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric' 
-          }),
-          file_count: upload.file_count
-        }));
-        
-        setScans(transformedScans);
       } catch (error) {
-        console.error('Error fetching upload history:', error);
-        // Fallback to original mock data if API fails
-        setScans([
-          { id: 1, type: 'Text', name: 'Document1.txt', date: 'Aug 9, 2025', file_count: 3 },
-          { id: 2, type: 'Code', name: 'script.js', date: 'Aug 8, 2025', file_count: 2 },
-          { id: 3, type: 'AI', name: 'Essay.pdf', date: 'Aug 7, 2025', file_count: 1 },
-          { id: 4, type: 'Text', name: 'Report.docx', date: 'Aug 6, 2025', file_count: 4 },
-          { id: 5, type: 'Code', name: 'program.cpp', date: 'Aug 5, 2025', file_count: 2 },
-        ]);
+        console.error('Error fetching uploads:', error);
       } finally {
         setLoading(false);
       }
     };
 
+    const fetchUserEmail = async () => {
+      try {
+        const response = await axios.get('/api/user');
+        if (response.data && response.data.email) {
+          setUserEmail(response.data.email);
+        }
+      } catch (error) {
+        console.error('Error fetching user email:', error);
+      }
+    };
+
     fetchUploads();
+    fetchUserEmail();
   }, []);
 
   const filteredScans = scans.filter(scan => 
@@ -72,30 +67,13 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`/api/upload/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      await axios.delete('/api/delete_upload', {
+        params: { upload_id: id }
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete scan');
-      }
-      
       setScans(scans.filter(scan => scan.id !== id));
     } catch (error) {
-      console.error('Error deleting scan:', error);
-      alert('Failed to delete scan. Please try again.');
+      console.error('Error deleting upload:', error);
     }
-  };
-
-  const handleViewResults = (scan) => {
-    navigate('/results', { 
-      state: { 
-        analysisName: scan.name, 
-        scanType: scan.type.toLowerCase(),
-        uploadId: scan.id
-      } 
-    });
   };
 
   const toggleSidebar = () => {
@@ -228,7 +206,7 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
     searchInput: {
       width: '100%',
       padding: '8px 15px 8px 40px',
-      border: '1px solid ',
+      border: '1px solid #bdc3c7',
       borderRadius: '4px'
     },
     newScanButton: {
@@ -308,11 +286,6 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
     actionGroup: {
       display: 'flex',
       gap: '15px'
-    },
-    loadingContainer: {
-      padding: '20px',
-      textAlign: 'center',
-      color: '#64748b'
     }
   };
 
@@ -390,48 +363,41 @@ const HistoryPage = ({ userEmail = "user@example.com" }) => {
             <div style={styles.smallColumn}>Actions</div>
           </div>
 
-          {loading ? (
-            <div style={styles.loadingContainer}>Loading scan history...</div>
-          ) : filteredScans.length > 0 ? (
-            filteredScans.map(scan => (
-              <div key={scan.id} style={styles.historyRow}>
-                <div style={styles.typeColumn}>
-                  {getIconForType(scan.type)}
-                  {scan.type}
-                </div>
-                <div style={styles.nameColumn}>{scan.name}</div>
-                <div style={styles.dateColumn}>{scan.date}</div>
-                <div style={styles.smallColumn}>
+          {filteredScans.map(scan => (
+            <div key={scan.id} style={styles.historyRow}>
+              <div style={styles.typeColumn}>
+                {getIconForType(scan.type)}
+                {scan.type}
+              </div>
+              <div style={styles.nameColumn}>{scan.name}</div>
+              <div style={styles.dateColumn}>{scan.date}</div>
+              <div style={styles.smallColumn}>
+                <button 
+                  style={{...styles.actionButton, ...styles.viewButton}}
+                  title="View"
+                >
+                  <FiEye />
+                </button>
+              </div>
+              <div style={styles.smallColumn}>
+                <div style={styles.actionGroup}>
                   <button 
-                    style={{...styles.actionButton, ...styles.viewButton}}
-                    title="View"
-                    onClick={() => handleViewResults(scan)}
+                    style={{...styles.actionButton, ...styles.downloadButton}}
+                    title="Download"
                   >
-                    <FiEye />
+                    <FiDownload />
+                  </button>
+                  <button 
+                    style={{...styles.actionButton, ...styles.deleteButton}}
+                    onClick={() => handleDelete(scan.id)}
+                    title="Delete"
+                  >
+                    <FiTrash2 />
                   </button>
                 </div>
-                <div style={styles.smallColumn}>
-                  <div style={styles.actionGroup}>
-                    <button 
-                      style={{...styles.actionButton, ...styles.downloadButton}}
-                      title="Download"
-                    >
-                      <FiDownload />
-                    </button>
-                    <button 
-                      style={{...styles.actionButton, ...styles.deleteButton}}
-                      onClick={() => handleDelete(scan.id)}
-                      title="Delete"
-                    >
-                      <FiTrash2 />
-                    </button>
-                  </div>
-                </div>
               </div>
-            ))
-          ) : (
-            <div style={styles.loadingContainer}>No scans found</div>
-          )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

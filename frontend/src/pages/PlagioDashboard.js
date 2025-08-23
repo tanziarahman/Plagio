@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiChevronLeft, FiChevronRight, FiTrash2, FiUpload, FiCheckCircle } from 'react-icons/fi';
+import axios from 'axios';
 
-const PlagioDashboard = ({ userEmail = "user@example.com", defaultScanType = null }) => {
+const PlagioDashboard = ({ defaultScanType = null }) => {
   // State Management
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -15,7 +16,7 @@ const PlagioDashboard = ({ userEmail = "user@example.com", defaultScanType = nul
   const [isScanning, setIsScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
   const [showFileWarning, setShowFileWarning] = useState(false);
-  const [uploadId, setUploadId] = useState(null);
+  const [userEmail, setUserEmail] = useState('');
 
   // Embedded CSS Animation
   const GlobalStyles = () => (
@@ -128,69 +129,50 @@ const PlagioDashboard = ({ userEmail = "user@example.com", defaultScanType = nul
     setIsScanning(true);
     
     try {
-      // Create FormData for file upload
       const formData = new FormData();
       formData.append('scanType', scanType);
       formData.append('analysis_name', analysisName);
       
-      // Add all files
       files.forEach(file => {
         formData.append('files', file);
       });
       
-      // Send request to backend
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
+      const response = await axios.post('/api/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-      
-      const result = await response.json();
-      setUploadId(result.upload_id);
-      
-      // If it's an AI scan, we're done
-      if (scanType === 'ai') {
+      if (response.status === 201) {
         setScanComplete(true);
-      } else {
-        // For text and code, initiate comparison
-        const compareResponse = await fetch('/api/compare-txt', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ upload_id: result.upload_id }),
-          credentials: 'include'
-        });
-        
-        if (!compareResponse.ok) {
-          const errorData = await compareResponse.json();
-          throw new Error(errorData.error || 'Comparison failed');
-        }
-        
-        setScanComplete(true);
+        // Store upload_id for later use
+        localStorage.setItem('currentUploadId', response.data.upload_id);
       }
     } catch (error) {
-      setUploadError(error.message || 'An error occurred during scanning');
-      setScanComplete(false);
+      setUploadError('Upload failed. Please try again.');
+      console.error('Upload error:', error);
     } finally {
       setIsScanning(false);
     }
   };
 
   const handleViewResults = () => {
-    navigate('/results', { state: { files, analysisName, scanType, uploadId } });
+    const uploadId = localStorage.getItem('currentUploadId');
+    navigate('/results', { 
+      state: { 
+        files, 
+        analysisName, 
+        scanType,
+        uploadId 
+      } 
+    });
   };
 
   const handleNavigateToHistory = () => {
     navigate('/history');
   };
 
-  // Styles (same as original)
+  // Styles
   const styles = {
     dashboard: {
       display: 'flex',
@@ -231,7 +213,7 @@ const PlagioDashboard = ({ userEmail = "user@example.com", defaultScanType = nul
       padding: '0 20px 20px',
       fontSize: '24px',
       fontWeight: 'bold',
-      borderBottom: '1px solid ',
+      borderBottom: '1px solid #34495e',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis'
