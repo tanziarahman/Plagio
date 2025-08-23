@@ -94,6 +94,15 @@ const FileComparisonPage = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await axios.post('/auth/logout');
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   const getIconForType = (fileName) => {
     const extension = fileName.split('.').pop().toLowerCase();
     if (['c', 'cpp', 'js', 'java', 'py', 'html', 'css'].includes(extension)) {
@@ -434,6 +443,7 @@ const FileComparisonPage = () => {
           style={styles.logoutButton}
           onMouseOver={(e) => e.target.style.backgroundColor = styles.logoutButtonHover.backgroundColor}
           onMouseOut={(e) => e.target.style.backgroundColor = styles.logoutButton.backgroundColor}
+          onClick={handleLogout}
         >
           {sidebarCollapsed ? 'L' : 'Logout'}
         </button>

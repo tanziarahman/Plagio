@@ -18,6 +18,22 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
   const [showFileWarning, setShowFileWarning] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
+  // Fetch user email on component mount
+  React.useEffect(() => {
+    const fetchUserEmail = async () => {
+      try {
+        const response = await axios.get('/api/user');
+        if (response.data && response.data.email) {
+          setUserEmail(response.data.email);
+        }
+      } catch (error) {
+        console.error('Error fetching user email:', error);
+      }
+    };
+
+    fetchUserEmail();
+  }, []);
+
   // Embedded CSS Animation
   const GlobalStyles = () => (
     <style>
@@ -112,6 +128,15 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
     // Check if warning should be removed
     if ((scanType === 'text' || scanType === 'code') && newFiles.length !== 1) {
       setShowFileWarning(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await axios.post('/auth/logout');
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
     }
   };
 
@@ -457,7 +482,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
           </div>
         </div>
         
-        <button style={styles.logoutButton}>
+        <button style={styles.logoutButton} onClick={handleLogout}>
           {sidebarCollapsed ? 'L' : 'Logout'}
         </button>
       </div>

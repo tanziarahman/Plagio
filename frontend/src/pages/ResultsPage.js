@@ -75,6 +75,15 @@ const ResultsPage = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
+  const handleLogout = async () => {
+    try {
+      await axios.post('/auth/logout');
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   const handleNavigation = (page) => {
     if (page === 'scans') {
       navigate('/history');
@@ -291,7 +300,7 @@ const ResultsPage = () => {
           </div>
         </div>
         
-        <button style={styles.logoutButton}>
+        <button style={styles.logoutButton} onClick={handleLogout}>
           {sidebarCollapsed ? 'L' : 'Logout'}
         </button>
       </div>
