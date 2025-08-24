@@ -95,16 +95,29 @@ const ResultsPage = () => {
   };
 
   const handleFileClick = (fileId, fileName) => {
-    navigate('/file-comparison', { 
-      state: { 
-        files, 
-        analysisName, 
-        scanType, 
-        selectedFile: fileName,
-        uploadId: uploadId,
-        fileId: fileId
-      } 
-    });
+    if (scanType === 'ai') {
+      navigate('/ai-analysis', { 
+        state: { 
+          files, 
+          analysisName, 
+          scanType, 
+          selectedFile: fileName,
+          uploadId: uploadId,
+          fileId: fileId
+        } 
+      });
+    } else {
+      navigate('/file-comparison', { 
+        state: { 
+          files, 
+          analysisName, 
+          scanType, 
+          selectedFile: fileName,
+          uploadId: uploadId,
+          fileId: fileId
+        } 
+      });
+    }
   };
 
   const getColorForPercentage = (percent) => {
@@ -221,6 +234,26 @@ const ResultsPage = () => {
       display: 'flex',
       flexDirection: 'column'
     },
+    resultsHeader: {
+      marginBottom: '20px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    },
+    analysisName: {
+      fontSize: '24px',
+      fontWeight: 'bold',
+      color: '#2c3e50'
+    },
+    scanTypeBadge: {
+      padding: '5px 15px',
+      borderRadius: '20px',
+      backgroundColor: scanType === 'ai' ? '#9c27b0' : 
+                      scanType === 'code' ? '#3498db' : '#1abc9c',
+      color: 'white',
+      fontSize: '14px',
+      fontWeight: 'bold'
+    },
     resultsTable: {
       backgroundColor: 'white',
       borderRadius: '5px',
@@ -313,13 +346,23 @@ const ResultsPage = () => {
         </div>
 
         <div style={styles.contentArea}>
+          {/* Results Header */}
+          <div style={styles.resultsHeader}>
+            <div style={styles.analysisName}>{analysisName}</div>
+            <div style={styles.scanTypeBadge}>
+              {scanType.toUpperCase()} SCAN
+            </div>
+          </div>
+
           {/* Results Table */}
           <div style={styles.resultsTable}>
             <div style={styles.tableHeader}>
               <div style={styles.typeColumn}>Type</div>
               <div style={styles.nameColumn}>Name</div>
               <div style={styles.dateColumn}>Date</div>
-              <div style={styles.percentColumn}>Plagiarism %</div>
+              <div style={styles.percentColumn}>
+                {scanType === 'ai' ? 'AI Content %' : 'Plagiarism %'}
+              </div>
             </div>
             
             {resultsData.length > 0 ? (
