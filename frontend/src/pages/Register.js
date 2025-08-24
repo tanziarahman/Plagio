@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -19,114 +18,283 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  // const handleChange = (e) => {
+  //   const { name, value } = e.target;
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     [name]: value
+  //   }));
     
-    // Special handling for password field
-    if (name === 'password') {
-      const isPasswordValid = value.length >= 8 && value.length <= 20;
-      setErrors(prev => ({
-        ...prev,
-        password: value ? !isPasswordValid : false,
-        message: ''
-      }));
-    } else {
-      // Clear error when typing other fields
-      setErrors(prev => ({
-        ...prev,
-        [name]: false,
-        message: ''
-      }));
-    }
-  };
+  //   // Special handling for password field
+  //   if (name === 'password') {
+  //     const isPasswordValid = value.length >= 8 && value.length <= 20;
+  //     setErrors(prev => ({
+  //       ...prev,
+  //       password: value ? !isPasswordValid : false,
+  //       message: ''
+  //     }));
+  //   } else {
+  //     // Clear error when typing other fields
+  //     setErrors(prev => ({
+  //       ...prev,
+  //       [name]: false,
+  //       message: ''
+  //     }));
+  //   }
+  // };
+
+const handleChange = (e) => {
+  const { name, value } = e.target;
+  
+  // Update form data exactly as typed
+  setFormData(prev => ({
+    ...prev,
+    [name]: value
+  }));
+
+  // Password validation (unchanged)
+  if (name === 'password') {
+    const isPasswordValid = value.length >= 8 && value.length <= 20;
+    setErrors(prev => ({
+      ...prev,
+      password: value ? !isPasswordValid : false,
+      message: ''
+    }));
+  } 
+  // Email validation - check for capitals but don't auto-fix
+  // else if (name === 'email') {
+  //   const hasUppercase = /[A-Z]/.test(value);
+  //   const isValidFormat = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
+    
+  //   setErrors(prev => ({
+  //     ...prev,
+  //     email: hasUppercase || !isValidFormat,
+  //     emailMessage: hasUppercase 
+  //       ? 'Email must be in lowercase letters' 
+  //       : !isValidFormat ? 'Invalid email format' : ''
+  //   }));
+  // }
+  
+  else {
+    setErrors(prev => ({
+      ...prev,
+      [name]: false,
+      message: ''
+    }));
+  }
+};
+  // const validateFields = () => {
+  //   const isPasswordValid = formData.password.length >= 8 && formData.password.length <= 20;
+    
+  //   const newErrors = {
+  //     email: !formData.email,
+  //     password: !formData.password || !isPasswordValid,
+  //     verificationCode: !formData.verificationCode,
+  //     message: ''
+  //   };
+
+  // if (newErrors.email) {
+  //   newErrors.message = 'Email is required';
+  // } else if (newErrors.verificationCode) {
+  //   newErrors.message = 'Verification code is required';
+  // } else if (newErrors.password) {
+  //   newErrors.message = !formData.password 
+  //     ? 'Password is required' 
+  //     : !isPasswordValid 
+  //       ? (formData.password.length < 8 
+  //           ? 'Password must be at least 8 characters' 
+  //           : 'Password cannot exceed 20 characters')
+  //       : '';
+  // }
+  
+    
+  //   setErrors(newErrors);
+  //   return !Object.values(newErrors).some(error => error);
+  // };
 
   const validateFields = () => {
     const isPasswordValid = formData.password.length >= 8 && formData.password.length <= 20;
-    
-    const newErrors = {
-      email: !formData.email,
-      password: !formData.password || !isPasswordValid,
-      verificationCode: !formData.verificationCode,
-      message: ''
-    };
-    
-    setErrors(newErrors);
-    return !Object.values(newErrors).some(error => error);
+  
+  const newErrors = {
+    email: !formData.email,
+    password: !formData.password || !isPasswordValid,
+    verificationCode: !formData.verificationCode || !isCodeSent, // Check both code existence and if it was sent
+    message: '',
+    emailMessage: !formData.email ? 'Email is required' : '',
+    verificationMessage: !formData.verificationCode 
+      ? 'Verification code is required'
+      : !isCodeSent
+        ? 'Invalid verification code'
+        : 'Invalid verification code',
+    passwordMessage: !formData.password 
+      ? 'Password is required' 
+      : !isPasswordValid 
+        ? (formData.password.length < 8 
+            ? 'Password must be at least 8 characters' 
+            : 'Password cannot exceed 20 characters')
+        : ''
   };
+  // Set the general message to the first error encountered
+  if (newErrors.email) {
+    newErrors.message = newErrors.emailMessage;
+  } else if (newErrors.verificationCode) {
+    newErrors.message = newErrors.verificationMessage;
+  } else if (newErrors.password) {
+    newErrors.message = newErrors.passwordMessage;
+  }
 
-  const handleSendCode = async (e) => {
-    e.preventDefault();
+  setErrors(newErrors);
+  return !Object.values({
+    email: newErrors.email,
+    password: newErrors.password,
+    verificationCode: newErrors.verificationCode
+  }).some(error => error);
+};
+
+  // const handleSendCode = async (e) => {
+  //   e.preventDefault();
     
-    if (!formData.email) {
-      setErrors({ ...errors, email: true, message: 'Email is required' });
+  //   if (!formData.email) {
+  //     setErrors({ ...errors, email: true, message: 'Email is required' });
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await fetch('http://localhost:5000/send-code', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ email: formData.email }),
+  //     });
+
+  //     const data = await response.json();
+
+  //     if (!response.ok) {
+  //       setErrors({ ...errors, email: true, message: data.message || 'Failed to send code' });
+  //       return;
+  //     }
+
+  //     setIsCodeSent(true);
+  //     setErrors({ ...errors, email: false, message: '' });
+  //   } catch (error) {
+  //     setErrors({ ...errors, email: true, message: 'Network error. Please try again.' });
+  //   }
+  // };
+
+const handleSendCode = async (e) => {
+  e.preventDefault();
+
+  if (/[A-Z]/.test(formData.email)) {
+    setErrors({ 
+      email: true, 
+      emailMessage: 'Email must be in lowercase letters',
+      verificationCode: false
+    });
+    return;
+  }
+
+  if (!formData.email) {
+    setErrors({ 
+      email: true, 
+      emailMessage: 'Email is required',
+      verificationCode: false
+    });
+    return;
+  }
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(formData.email)) {
+    setErrors({ 
+      email: true, 
+      emailMessage: 'Invalid email format',
+      verificationCode: false
+    });
+    return;
+  }
+  
+  try {
+    const response = await fetch('http://localhost:5000/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: formData.email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Improved error message handling
+      let errorMessage = 'Failed to send verification code';
+      if (data.message) {
+        errorMessage = data.message.toLowerCase().includes('domain') 
+          ? 'Please enter an email with a valid domain'
+          : data.message;
+      } else if (data.Message) { // Some APIs use Message with capital M
+        errorMessage = data.Message.toLowerCase().includes('domain')
+          ? 'Please enter an email with a valid domain'
+          : data.Message;
+      }
+      
+      setErrors({ 
+        email: true, 
+        emailMessage: errorMessage,
+        verificationCode: false
+      });
       return;
     }
 
-    try {
-      const response = await fetch('http://localhost:5000/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setErrors({ ...errors, email: true, message: data.message || 'Failed to send code' });
-        return;
-      }
-
-      setIsCodeSent(true);
-      setErrors({ ...errors, email: false, message: '' });
-    } catch (error) {
-      setErrors({ ...errors, email: true, message: 'Network error. Please try again.' });
-    }
-  };
-
+    // Success case
+    setIsCodeSent(true);
+    setErrors({ 
+      email: false, 
+      emailMessage: '',
+      verificationCode: false 
+    });
+  } catch (error) {
+    setErrors({ 
+      email: true, 
+      emailMessage: 'Network error. Please try again.',
+      verificationCode: false
+    });
+  }
+};
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateFields()) return;
+  e.preventDefault();
+  
+  if (!validateFields()) return;
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    try {
-      const response = await fetch('http://localhost:5000/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          code: formData.verificationCode
-        }),
-      });
+  try {
+    const response = await fetch('http://localhost:5000/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        email: formData.email,
+        password: formData.password,
+        code: formData.verificationCode
+      }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (response.status === 201) {
-        navigate('/dashboard');
-      } else {
-        setErrors({
-          ...errors,
-          verificationCode: true,
-          message: data.message || 'Registration failed. Please try again.'
-        });
-      }
-    } catch (error) {
+    if (response.status === 201) {
+      navigate('/plagio-dashboard');
+    } else {
       setErrors({
         ...errors,
         verificationCode: true,
-        message: 'Network error. Please try again.'
+        verificationMessage: data.message || 'Invalid verification code'
       });
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  } catch (error) {
+    setErrors({
+      ...errors,
+      verificationCode: true,
+      verificationMessage: 'Network error. Please try again.'
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div style={styles.body}>
@@ -153,7 +321,7 @@ export default function Register() {
                 <svg style={styles.errorIcon} viewBox="0 0 20 20">
                   <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
                 </svg>
-                <span style={styles.errorText}>{errors.message}</span>
+                <span style={styles.errorText}>{errors.emailMessage}</span>
               </div>
             )}
           </div>
@@ -229,7 +397,7 @@ export default function Register() {
                 <svg style={styles.errorIcon} viewBox="0 0 20 20">
                   <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
                 </svg>
-                <span style={styles.errorText}>{errors.message}</span>
+                <span style={styles.errorText}>{errors.verificationMessage}</span>
               </div>
             )}
           </div>
@@ -342,20 +510,20 @@ const styles = {
   sendCodeButton: {
     padding: '0 16px',
     backgroundColor: '#f8f9fa',
-    border: '1px solid #764ba2',
-    color: '#764ba2',
+    border: '1px solid #5064a1ff',
+    color: '#5064a1ff',
     borderRadius: '6px',
     fontWeight: '500',
     transition: 'all 0.2s',
     whiteSpace: 'nowrap',
     ':hover': {
-      backgroundColor: '#764ba2',
+      backgroundColor: '#5064a1ff',
       color: 'white',
     },
   },
   submitButton: {
     padding: '12px',
-    backgroundColor: '#764ba2',
+    backgroundColor: '#5064a1ff',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
@@ -378,7 +546,7 @@ const styles = {
     color: '#495057',
   },
   loginLink: {
-    color: '#764ba2',
+    color: '#5064a1ff',
     fontWeight: '500',
     textDecoration: 'none',
     ':hover': {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import plagio from '../images/plagio.jpeg';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -10,7 +11,7 @@ export default function Home() {
         method: 'GET',
         credentials: 'include',
       });
-      navigate(res.ok ? '/dashboard' : '/login');
+      navigate(res.ok ? '/plagio-dashboard' : '/login');
     } catch (err) {
       navigate('/login');
     }
@@ -18,162 +19,287 @@ export default function Home() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.nav}>
+      {/* Top Navigation Bar */}
+      <nav style={styles.navbar}>
         <div style={styles.logo}>PLAGIO</div>
-      </div>
+        <div style={styles.navLinks}>
+          <Link to="/about" style={styles.navLink}>Learn More</Link>
+          <Link to="/login" style={styles.navLink}>Login</Link>
+          <Link to="/register" style={styles.navButton}>Sign Up</Link>
+        </div>
+      </nav>
 
-      <div style={styles.mainContent}>
-        <h1 style={styles.title}>Comprehensive Plagiarism Detection</h1>
-        <p style={styles.subtitle}>
-          Analyze documents, code, and content for originality with our plagiarism detection system
-        </p>
-
-        <div style={styles.buttons}>
-          <button 
-            style={styles.primaryButton}
-            onClick={handleGetStarted}
-          >
-            Get Started
-          </button>
-          <Link to="/about" style={styles.secondaryButton}>
-            Learn More
-          </Link>
+      {/* Main Content - Split Layout */}
+      <div style={styles.mainSection}>
+        <div style={styles.leftColumn}>
+          <img 
+            src={plagio}
+            alt="Plagiarism Detection" 
+            style={styles.image}
+          />
+        </div>
+        <div style={styles.rightColumn}>
+          <h1 style={styles.title}>Comprehensive Plagiarism Detection</h1>
+          <p style={styles.subtitle}>
+            Analyze documents, code, and content for originality with our plagiarism detection system. Ensure integrity with our powerful tools.
+          </p>
+          <div style={styles.buttons}>
+            <button 
+              style={styles.primaryButton}
+              onClick={handleGetStarted}
+            >
+              Get Started
+            </button>
+          </div>
         </div>
       </div>
 
-      <div style={styles.footer}>
-        <p style={styles.footerText}>
-          Don't have an account?{' '}
-          <Link to="/register" style={styles.link}>
-            Register now
-          </Link>
-        </p>
+      {/* Feature Boxes */}
+      <div style={styles.featuresContainer}>
+        <div style={styles.features}>
+          <div style={styles.featureBox}>
+            <div style={styles.featureIcon}>📄</div>
+            <h3 style={styles.featureTitle}>Compare Documents</h3>
+            <p style={styles.featureText}>Easily compare multiple documents to identify similarities and potential plagiarism.</p>
+          </div>
+          <div style={styles.featureBox}>
+            <div style={styles.featureIcon}>💻</div>
+            <h3 style={styles.featureTitle}>Code Detection</h3>
+            <p style={styles.featureText}>Specialized detection for source code to identify plagiarism in programming assignments.</p>
+          </div>
+          <div style={styles.featureBox}>
+            <div style={styles.featureIcon}>🤖</div>
+            <h3 style={styles.featureTitle}>AI Detection</h3>
+            <p style={styles.featureText}>Detect AI-generated text and ensure content authenticity with our comprehensive verification system.</p>
+          </div>
+        </div>
       </div>
+
+      {/* Footer - Simplified for University Project */}
+      <footer style={styles.footer}>
+        <div style={styles.footerContent}>
+          <p style={styles.copyright}>© 2025 PLAGIO - Plagiarism Checker. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 }
 
 const styles = {
-    container: {
+  container: {
     minHeight: '100vh',
-    background: `
-      linear-gradient(to bottom, 
-        rgba(230, 240, 255, 0.3) 0%, 
-        #f8f9fa 40%, 
-        #f8f9fa 60%, 
-        rgba(230, 240, 255, 0.8) 100%
-      )
-    `,
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     display: 'flex',
     flexDirection: 'column',
-    padding: '2rem',
     position: 'relative',
-    overflow: 'hidden',
+    overflowX: 'hidden',
   },
-
-  nav: {
+  navbar: {
     display: 'flex',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: '4rem',
+    padding: '1rem 2rem',
+    backgroundColor: 'white',
+    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
   },
   logo: {
-    fontSize: '4rem',          
-    fontWeight: '700',          
-    color: '#8c5abaff',
-    textAlign: 'center',
-    fontFamily: "'Montserrat', sans-serif", 
-    letterSpacing: '-0.03em',   
-    margin: '0.5rem 0'
+    fontSize: '1.8rem',
+    fontWeight: '800',
+    color: '#4361ee',
+    fontFamily: "'Montserrat', sans-serif",
+    letterSpacing: '-0.03em',
+  },
+  navLinks: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1.5rem',
   },
   navLink: {
-    color: '#2b2d42',
+    color: '#4a4a4a',
     textDecoration: 'none',
     fontWeight: '500',
-    padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#e9ecef',
-    },
+    padding: '0.5rem 0',
+    position: 'relative',
+    transition: 'all 0.2s ease',
   },
-  mainContent: {
+  navButton: {
+    background: '#4361ee',
+    color: 'white',
+    textDecoration: 'none',
+    fontWeight: '500',
+    padding: '0.5rem 1.2rem',
+    borderRadius: '4px',
+    transition: 'all 0.2s ease',
+  },
+  mainSection: {
+    display: 'flex',
+    flexDirection: 'row',
+    minHeight: '70vh',
+    padding: '2rem',
+    backgroundColor: '#f8f9fa',
+  },
+  leftColumn: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '2rem',
+  },
+  rightColumn: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    alignItems: 'center',
-    textAlign: 'center',
-    maxWidth: '800px',
-    margin: '0 auto',
     padding: '2rem',
+  },
+  image: {
+    width: '100%',
+    maxWidth: '500px',
+    borderRadius: '10px',
+    boxShadow: '0 5px 20px rgba(0, 0, 0, 0.1)',
   },
   title: {
     fontSize: '2.5rem',
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#2b2d42',
     marginBottom: '1.5rem',
-    lineHeight: '1.3',
+    lineHeight: '1.2',
   },
   subtitle: {
-    fontSize: '1.2rem',
+    fontSize: '1.1rem',
     color: '#6c757d',
-    marginBottom: '3rem',
+    marginBottom: '2.5rem',
     lineHeight: '1.6',
-    maxWidth: '600px',
+    maxWidth: '500px',
   },
   buttons: {
     display: 'flex',
-    gap: '1rem',
-    marginBottom: '3rem',
+    gap: '1.5rem',
   },
   primaryButton: {
-    background: 'linear-gradient(45deg, #764ba2, #667eea)',
+    background: '#4361ee',
     color: 'white',
     border: 'none',
-    padding: '0.8rem 1.8rem',
-    fontSize: '1rem',
-    fontWeight: '500',
-    borderRadius: '6px',
+    padding: '1rem 2.5rem',
+    fontSize: '1.1rem',
+    fontWeight: '600',
+    borderRadius: '4px',
     cursor: 'pointer',
-    transition: 'all 0.2s',
-    ':hover': {
-      background: '#3a56d4',
-      transform: 'translateY(-1px)',
-    },
+    transition: 'all 0.3s ease',
+    boxShadow: '0 4px 10px rgba(67, 97, 238, 0.3)',
   },
-  secondaryButton: {
-    background: 'transparent',
-    color: '#4361ee',
-    border: '1px solid #4361ee',
-    padding: '0.8rem 1.8rem',
-    fontSize: '1rem',
-    fontWeight: '500',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    textDecoration: 'none',
-    transition: 'all 0.2s',
-    ':hover': {
-      background: '#f8f9fa',
-      transform: 'translateY(-1px)',
-    },
+  featuresContainer: {
+    backgroundColor: 'white',
+    padding: '4rem 2rem',
+  },
+  features: {
+    display: 'flex',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: '2rem',
+    maxWidth: '1200px',
+    margin: '0 auto',
+  },
+  featureBox: {
+    flex: '1',
+    minWidth: '250px',
+    maxWidth: '350px',
+    backgroundColor: '#f8f9fa',
+    padding: '2rem',
+    borderRadius: '8px',
+    boxShadow: '0 5px 15px rgba(0, 0, 0, 0.05)',
+    textAlign: 'center',
+    transition: 'all 0.3s ease',
+  },
+  featureIcon: {
+    fontSize: '2.5rem',
+    marginBottom: '1.5rem',
+  },
+  featureTitle: {
+    fontSize: '1.3rem',
+    fontWeight: '600',
+    color: '#2b2d42',
+    marginBottom: '1rem',
+  },
+  featureText: {
+    color: '#6c757d',
+    lineHeight: '1.6',
   },
   footer: {
-    marginTop: 'auto',
-    textAlign: 'center',
-    padding: '1rem',
+    backgroundColor: '#2b2d42',
+    padding: '3rem 2rem 1rem',
+    color: 'white',
+  },
+  footerContent: {
+    display: 'flex',
+    justifyContent: 'space-around',
+    flexWrap: 'wrap',
+    gap: '2rem',
+    maxWidth: '1200px',
+    margin: '0 auto 2rem',
+  },
+  footerSection: {
+    flex: 1,
+    minWidth: '200px',
+  },
+  footerTitle: {
+    fontSize: '1.2rem',
+    fontWeight: '600',
+    marginBottom: '1rem',
+    color: 'white',
   },
   footerText: {
-    color: '#6c757d',
-    fontSize: '0.9rem',
+    color: 'rgba(255, 255, 255, 0.7)',
+    lineHeight: '1.6',
+    marginBottom: '1rem',
   },
-  link: {
-    color: '#4361ee',
-    fontWeight: '500',
+  footerLink: {
+    display: 'block',
+    color: 'rgba(255, 255, 255, 0.7)',
     textDecoration: 'none',
-    ':hover': {
-      textDecoration: 'underline',
-    },
+    marginBottom: '0.5rem',
+    transition: 'all 0.2s ease',
+  },
+  footerBottom: {
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+    paddingTop: '1.5rem',
+    textAlign: 'center',
+  },
+  copyright: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: '0.9rem',
+    margin: 0,
   },
 };
+
+// Add hover effects
+const addHoverEffects = () => {
+  const style = document.createElement('style');
+  style.textContent = `
+    .nav-link:hover {
+      color: #4361ee;
+    }
+    .nav-button:hover {
+      background: #3a56d4;
+    }
+    .primary-button:hover {
+      background: #3a56d4;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(67, 97, 238, 0.4);
+    }
+    .feature-box:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    .footer-link:hover {
+      color: white;
+    }
+  `;
+  document.head.appendChild(style);
+};
+
+
+addHoverEffects();

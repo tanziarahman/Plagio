@@ -30,7 +30,7 @@ export default function Login() {
     console.log("Login response:", data);
 
     if (response.ok) {
-      navigate('/dashboard');
+      navigate('/plagio-dashboard');
     } else {
       setMessages([data.message || 'Login failed.']);
       setEmail('');
@@ -213,7 +213,7 @@ const styles = {
   },
   submitButton: {
     padding: '12px',
-    backgroundColor: '#764ba2',
+    backgroundColor: '#5064a1ff',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
