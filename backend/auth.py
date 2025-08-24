@@ -6,8 +6,12 @@ import random
 import string
 from flask_mail import Message,Mail
 from datetime import datetime, timedelta
+import dns.resolver
+from socket import gaierror
+from flask_login import current_user
+import re
 
-verification_codes = {} 
+verification_codes = {}  
 
 
 auth_bp = Blueprint('auth', __name__)
@@ -25,6 +29,14 @@ def load_user(user_id):
 def unauthorized_callback():
     return make_response(jsonify({'message': 'Unauthorized'}), 401)
 
+
+
+@auth_bp.route('/me', methods=['GET'])
+@login_required
+def get_current_user():
+    return jsonify({
+        'email': current_user.email
+    }), 200
 
 
 
@@ -95,6 +107,33 @@ def logout():
 
 
 
+def domain_exists(email):
+    """Validate email format and domain"""
+    if not email or '@' not in email:
+        return False
+        
+    # Basic email format validation
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, email):
+        return False
+    
+    domain = email.split('@')[-1]
+    
+    try:
+        # Check MX records (mail server existence)
+        mx_records = dns.resolver.resolve(domain, 'MX')
+        if not mx_records:
+            return False
+            
+        # verify the domain itself exists
+        dns.resolver.resolve(domain, 'A')
+        return True
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.NoNameservers, gaierror):
+        return False
+    except dns.exception.DNSException:
+        return False
+
+
 
 @auth_bp.route('/send-code', methods=['POST'])
 def send_code():
@@ -108,6 +147,14 @@ def send_code():
     # Check if email already registered
     if User.query.filter_by(email=email).first():
         return jsonify({'message': 'Email already registered'}), 409
+    
+    
+    if not domain_exists(email):
+        return jsonify({
+            'success': False,
+            'message': 'Please enter an email with a valid domain'
+        }), 400
+    
 
     # Generate 6-digit code
     code = ''.join(random.choices(string.digits, k=6))
@@ -120,7 +167,6 @@ def send_code():
     }
 
     try:
-        # Send email
         msg = Message(
             'Your Verification Code',
             sender=current_app.config['MAIL_DEFAULT_SENDER'],
