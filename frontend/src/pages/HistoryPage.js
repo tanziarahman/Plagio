@@ -5,7 +5,6 @@ import {
   FiChevronRight, 
   FiSearch,
   FiEye,
-  FiDownload,
   FiTrash2,
   FiFile,
   FiCode,
@@ -286,9 +285,6 @@ const HistoryPage = () => {
     viewButton: {
       color: '#3498db'
     },
-    downloadButton: {
-      color: '#2ecc71'
-    },
     deleteButton: {
       color: '#e74c3c'
     },
@@ -390,12 +386,6 @@ const HistoryPage = () => {
               </div>
               <div style={styles.smallColumn}>
                 <div style={styles.actionGroup}>
-                  <button 
-                    style={{...styles.actionButton, ...styles.downloadButton}}
-                    title="Download"
-                  >
-                    <FiDownload />
-                  </button>
                   <button 
                     style={{...styles.actionButton, ...styles.deleteButton}}
                     onClick={() => handleDelete(scan.id)}
