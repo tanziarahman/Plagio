@@ -64,7 +64,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
   const isValidFile = (file) => {
     const extension = file.name.split('.').pop().toLowerCase();
     if (scanType === 'ai' || scanType === 'text') return ['txt', 'docx'].includes(extension);
-    if (scanType === 'code') return ['c', 'cpp'].includes(extension);
+    if (scanType === 'code') return ['c', 'cpp', 'py'].includes(extension);
     return false;
   };
 
@@ -79,7 +79,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       const invalidFiles = Array.from(e.target.files).filter(f => !isValidFile(f));
       
       if (invalidFiles.length > 0) {
-        setUploadError(`Invalid file type. Allowed: ${scanType === 'code' ? '.c, .cpp' : '.txt, .docx'}`);
+        setUploadError(`Invalid file type. Allowed: ${scanType === 'code' ? '.c, .cpp, .py' : '.txt, .docx'}`);
       } else {
         setUploadError('');
       }
@@ -558,7 +558,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
               ) : (
                 <div style={styles.noFilesText}>
                   {scanType 
-                    ? `No files selected. Allowed: ${scanType === 'code' ? '.c, .cpp' : '.txt, .docx'}`
+                    ? `No files selected. Allowed: ${scanType === 'code' ? '.c, .cpp, .py' : '.txt, .docx'}`
                     : 'Please select a scan type first'}
                 </div>
               )}
