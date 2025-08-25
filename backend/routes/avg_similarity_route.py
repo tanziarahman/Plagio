@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from models import db, Upload, AvgSimilarity, File
 
-avgSimilarity_bp = Blueprint('avg-similarity', __name__)
+avgSimilarity_bp = Blueprint('average-similarity', __name__)
 
 
 @avgSimilarity_bp.route('/average-similarity', methods=['POST'])
