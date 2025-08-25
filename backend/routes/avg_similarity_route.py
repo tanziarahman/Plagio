@@ -5,14 +5,13 @@ from models import db, Upload, AvgSimilarity, File
 avgSimilarity_bp = Blueprint('average-similarity', __name__)
 
 
-@avgSimilarity_bp.route('/average-similarity', methods=['POST'])
+@avgSimilarity_bp.route('/average-similarity', methods=['GET'])
 @login_required
 def get_avg_similarity():
-    data = request.get_json()
-    upload_id = data.get("upload_id")
-
+    upload_id = request.args.get('upload_id', type=int)
+    
     if not upload_id:
-        return jsonify({'error': 'Missing upload_id in request'}), 400
+        return jsonify({'error': 'Missing upload_id parameter'}), 400
 
     upload = Upload.query.filter_by(upload_id=upload_id, user_id=current_user.id).first()
     if not upload:
