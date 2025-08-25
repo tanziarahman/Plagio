@@ -1,44 +1,42 @@
 from flask import Blueprint, request, jsonify, make_response, current_app
-from flask_login import login_user, logout_user, login_required,LoginManager
+from flask_login import login_user, logout_user, login_required, LoginManager, current_user
 from models import db, User
 import bcrypt
 import random
 import string
-from flask_mail import Message,Mail
+from flask_mail import Message, Mail
 from datetime import datetime, timedelta
 import dns.resolver
 from socket import gaierror
-from flask_login import current_user
 import re
 
 verification_codes = {}  
 
-
 auth_bp = Blueprint('auth', __name__)
 
-
+# Initialize LoginManager
 login_manager = LoginManager()
-login_manager.login_view = 'login'
+login_manager.login_view = 'auth.login'  # Use blueprint name prefix
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-
 @login_manager.unauthorized_handler
 def unauthorized_callback():
     return make_response(jsonify({'message': 'Unauthorized'}), 401)
 
-
-
 @auth_bp.route('/me', methods=['GET'])
 @login_required
 def get_current_user():
-    return jsonify({
-        'email': current_user.email
-    }), 200
-
-
+    # Check if current_user is authenticated and loaded properly
+    if current_user.is_authenticated:
+        return jsonify({
+            'email': current_user.email,
+            'id': current_user.id
+        }), 200
+    else:
+        return jsonify({'message': 'User not authenticated'}), 401
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -75,29 +73,22 @@ def register():
 
     return jsonify({'message': 'Account created successfully'}), 201
 
-
-
-
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    remember = data.get('remember', False)  
+    remember = data.get('remember', False)
 
     if not email or not password:
         return jsonify({'message': 'Missing email or password'}), 400
 
     user = User.query.filter_by(email=email).first()
     if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        logout_user()
-        login_user(user, remember=remember)
+        login_user(user, remember=remember)  # Fixed: login the found user, not current_user
         return jsonify({'message': 'Login successful'}), 200
 
     return jsonify({'message': 'Invalid credentials. Try again.'}), 401
-
-
-
 
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
@@ -178,3 +169,4 @@ def send_code():
     except Exception as e:
         current_app.logger.error(f"Failed to send email: {str(e)}")
         return jsonify({'message': 'Failed to send verification code. Please try again.'}), 500
+    

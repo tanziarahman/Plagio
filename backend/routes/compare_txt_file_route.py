@@ -4,6 +4,7 @@ from models import db, Upload, File, Comparison, MatchItem
 from datetime import datetime
 import os
 from text_file_similarity import compare_file_pair 
+from file_avg_similarity import calculate_avg_similarity_for_upload
 
 compareTxtFile_bp = Blueprint('compare-txt', __name__)
 
@@ -51,14 +52,14 @@ def perform_comparison():
                 comp1 = Comparison(
                     file1_id=file1.file_id,
                     file2_id=file2.file_id,
-                    plagiarism_percent=comparison_result['first_text']['similarity_percentage'],
+                    plagiarism_percent=comparison_result['file1']['similarity_percentage'],
                     comparison_type='text',
                     checked_at=datetime.utcnow()
                 )
                 db.session.add(comp1)
                 db.session.flush()
 
-                for match in comparison_result['first_text']['items']:
+                for match in comparison_result['file1']['matches']:
                     match_item = MatchItem(
                         comparison_id=comp1.comparison_id,
                         match_type=match.get('type'),
@@ -72,14 +73,14 @@ def perform_comparison():
                 comp2 = Comparison(
                     file1_id=file2.file_id,
                     file2_id=file1.file_id,
-                    plagiarism_percent=comparison_result['second_text']['similarity_percentage'],
+                    plagiarism_percent=comparison_result['file2']['similarity_percentage'],
                     comparison_type='text',
                     checked_at=datetime.utcnow()
                 )
                 db.session.add(comp2)
                 db.session.flush()
 
-                for match in comparison_result['second_text']['items']:
+                for match in comparison_result['file2']['matches']:
                     match_item = MatchItem(
                         comparison_id=comp2.comparison_id,
                         match_type=match.get('type'),
@@ -94,13 +95,16 @@ def perform_comparison():
                     'file1_name': file1.original_name,
                     'file2_id': file2.file_id,
                     'file2_name': file2.original_name,
-                    'similarity_file1_to_file2': comparison_result['first_text']['similarity_percentage'],
-                    'similarity_file2_to_file1': comparison_result['second_text']['similarity_percentage'],
-                    'matches_file1_to_file2': comparison_result['first_text']['items'],
-                    'matches_file2_to_file1': comparison_result['second_text']['items'],
+                    'similarity_file1_to_file2': comparison_result['file1']['similarity_percentage'],
+                    'similarity_file2_to_file1': comparison_result['file2']['similarity_percentage'],
+                    'matches_file1_to_file2': comparison_result['first_text']['matches'],
+                    'matches_file2_to_file1': comparison_result['second_text']['matches'],
                 })
 
         db.session.commit()
+        
+        calculate_avg_similarity_for_upload(upload_id)
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Database error: {str(e)}'}), 500
