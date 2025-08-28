@@ -66,7 +66,7 @@ class Comparison(db.Model):
     file1 = relationship("File", foreign_keys=[file1_id], back_populates="comparisons_as_source")
     file2 = relationship("File", foreign_keys=[file2_id], back_populates="comparisons_as_target")
     matches = relationship("MatchItem", back_populates="comparison", cascade="all, delete-orphan")
-    match_codes = relationship("MatchItemCode", back_populates="comparison", cascade="all, delete-orphan")
+    match_codes = relationship("MatchPair", back_populates="comparison")
 
     # # __table_args__ = (
     # #     UniqueConstraint('file1_id', 'file2_id', name='unique_pair'),
@@ -87,29 +87,25 @@ class AvgSimilarity(db.Model):
     file = db.relationship("File")
 
 
-# class MatchedLine(db.Model):
-#     __tablename__ = 'MatchedLines'
 
-#     match_id = Column(Integer, primary_key=True, autoincrement=True)
-#     comparison_id = Column(Integer, ForeignKey('Comparisons.comparison_id', ondelete='CASCADE'), nullable=False)
-#     file1_line = Column(Integer, nullable=False)
-#     file2_line = Column(Integer, nullable=False)
-
-#     comparison = relationship("Comparison", back_populates="matches")
-
-
-class MatchItemCode(db.Model):
-    __tablename__ = 'MatchItemCodes'
+class MatchCode(db.Model):
+    __tablename__ = 'MatchCodes'
 
     match_id = Column(Integer, primary_key=True, autoincrement=True)
-    comparison_id = Column(Integer, ForeignKey('Comparisons.comparison_id', ondelete='CASCADE'), nullable=False)
-    file_id = Column(Integer, ForeignKey('Files.file_id', ondelete='CASCADE'), nullable=False)
-    start_line = Column(Integer, nullable=False)
-    end_line = Column(Integer, nullable=False)
-    pair_group_id = Column(Integer, nullable=False)
+    comparison_id = Column(Integer, ForeignKey('Comparisons.comparison_id', ondelete='CASCADE'))
 
-    comparison = relationship("Comparison", back_populates="match_codes")
-    file = relationship("File")
+    file1_id = Column(Integer, ForeignKey('Files.file_id', ondelete='CASCADE'), nullable=False)
+    file1_start = Column(Integer, nullable=False)
+    file1_end = Column(Integer, nullable=False)
+
+    file2_id = Column(Integer, ForeignKey('Files.file_id', ondelete='CASCADE'), nullable=False)
+    file2_start = Column(Integer, nullable=False)
+    file2_end = Column(Integer, nullable=False)
+
+    comparison = relationship("Comparison", backref="match_codes")
+    file1 = relationship("File", foreign_keys=[file1_id])
+    file2 = relationship("File", foreign_keys=[file2_id])
+
 
 
 
@@ -160,6 +156,17 @@ class AIDetectionResult(db.Model):
 #     score = Column(Float, nullable=False)  # 100 means very AI-like
 
 #     detection = relationship("AIDetectionResult", back_populates="sentences")
+
+
+# class MatchedLine(db.Model):
+#     __tablename__ = 'MatchedLines'
+
+#     match_id = Column(Integer, primary_key=True, autoincrement=True)
+#     comparison_id = Column(Integer, ForeignKey('Comparisons.comparison_id', ondelete='CASCADE'), nullable=False)
+#     file1_line = Column(Integer, nullable=False)
+#     file2_line = Column(Integer, nullable=False)
+
+#     comparison = relationship("Comparison", back_populates="matches")
     
     
     
