@@ -66,7 +66,7 @@ class Comparison(db.Model):
     file1 = relationship("File", foreign_keys=[file1_id], back_populates="comparisons_as_source")
     file2 = relationship("File", foreign_keys=[file2_id], back_populates="comparisons_as_target")
     matches = relationship("MatchItem", back_populates="comparison", cascade="all, delete-orphan")
-    match_codes = relationship("MatchPair", back_populates="comparison")
+    match_codes = relationship("MatchCode", back_populates="comparison")
 
     # # __table_args__ = (
     # #     UniqueConstraint('file1_id', 'file2_id', name='unique_pair'),
