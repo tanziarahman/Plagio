@@ -3,182 +3,269 @@ import mosspy
 import requests
 from bs4 import BeautifulSoup
 import re
-from datetime import datetime
-from app import db
-from models import db, Comparison, File, Upload , Comparison, MatchCode
-from file_avg_similarity import calculate_avg_similarity_for_upload
+import time
+from urllib.parse import urljoin
 
-
-
-def code_file_percnbtage(language, user_id, session):
+def perform_code_comparison(folder_path, language=None):
     """
-    Runs MOSS plagiarism check for all files in a given session of a specific user.
-    Saves results in the Comparisons table and calculates average similarities.
-    Returns: dict with report URL, parsed matches, and average similarities.
+    Performs MOSS code comparison for all code files in a folder.
+    Returns results and report URL without saving anything to the database.
     """
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    uploads_dir = os.path.join(BASE_DIR, "uploads", str(user_id), session)
+    if not os.path.isdir(folder_path):
+        return {"error": f"Folder '{folder_path}' does not exist"}
 
-    if not os.path.isdir(uploads_dir):
-        return {"error": f"Folder not found for user '{user_id}' and session '{session}'"}
+    # Collect all code files
+    supported_extensions = ('.py', '.c', '.cpp', '.java', '.js', '.cs', '.php', '.rb', '.go')
+    file_paths = [os.path.join(folder_path, f) for f in os.listdir(folder_path)
+                  if f.lower().endswith(supported_extensions) and os.path.isfile(os.path.join(folder_path, f))]
 
-    upload_obj = Upload.query.filter_by(user_id=user_id, session=session).first()
-    if not upload_obj:
-        return {"error": f"No upload found for user '{user_id}' and session '{session}'"}
+    print(f"Found {len(file_paths)} files: {[os.path.basename(f) for f in file_paths]}")
 
-    upload_id = upload_obj.upload_id
+    if len(file_paths) < 2:
+        return {"error": "At least two code files are required in the folder"}
 
-    m = mosspy.Moss(266483722, language)
+    # Detect language if not provided
+    if not language:
+        first_ext = os.path.splitext(file_paths[0])[1].lower()
+        extension_language_map = {
+            '.py': 'python', '.c': 'c', '.cpp': 'cpp', '.java': 'java',
+            '.js': 'javascript', '.cs': 'csharp',
+            '.php': 'php', '.rb': 'ruby', '.go': 'go'
+        }
+        language = extension_language_map.get(first_ext)
+        if not language:
+            return {"error": f"Unsupported file extension '{first_ext}'"}
 
-    for file_name in os.listdir(uploads_dir):
-        file_path = os.path.join(uploads_dir, file_name)
-        if os.path.isfile(file_path):
+    print(f"Using language: {language}")
+
+    try:
+        # Initialize MOSS and send files
+        m = mosspy.Moss(266483722, language)
+        for file_path in file_paths:
+            print(f"Adding file: {os.path.basename(file_path)}")
             m.addFile(file_path)
+        
+        print("Sending files to MOSS...")
+        report_url = m.send()
+        print(f"MOSS Report URL: {report_url}")
 
-    report_url = m.send()
+        # Add delay to ensure MOSS report is ready
+        time.sleep(3)
 
-    html = requests.get(report_url).text
-    soup = BeautifulSoup(html, "html.parser")
+        # Parse report
+        response = requests.get(report_url)
+        html = response.text
+        soup = BeautifulSoup(html, "html.parser")
 
-    results = []
+        results = []
+        table = soup.find("table")
+        
+        if not table:
+            print("No table found in MOSS report!")
+            return {
+                "message": "No similarities found",
+                "report_url": report_url,
+                "total_comparisons": 0,
+                "results": []
+            }
 
-    table = soup.find("table")
-    if table:
-        for row in table.find_all("tr")[1:]:
+        # Parse each comparison row
+        for row in table.find_all("tr")[1:]:  # Skip header row
             cols = row.find_all("td")
             if len(cols) >= 2:
                 file1_text = cols[0].get_text(strip=True)
                 file2_text = cols[1].get_text(strip=True)
 
-                file1_name = os.path.basename(file1_text.split(" ")[0])
-                file2_name = os.path.basename(file2_text.split(" ")[0])
+                # Extract filenames from both columns
+                file1_match = re.search(r'([^/\\]+)\.\w+ \(', file1_text)
+                file2_match = re.search(r'([^/\\]+)\.\w+ \(', file2_text)
+                
+                if file1_match and file2_match:
+                    file1_name = file1_match.group(1)
+                    file2_name = file2_match.group(1)
 
-                match = re.search(r"\((\d+)%\)", file1_text)
-                similarity_percent = int(match.group(1)) if match else 0
-                similarity_percent = min(similarity_percent + 3, 100)  
+                    if file1_name != file2_name:
+                        # Extract similarity percentages from both directions
+                        match1 = re.search(r'\((\d+)%\)', file1_text)
+                        match2 = re.search(r'\((\d+)%\)', file2_text)
+                        
+                        # Calculate similarities with +3 adjustment
+                        similarity_1_to_2 = int(match1.group(1)) + 3 if match1 else 3
+                        similarity_2_to_1 = int(match2.group(1)) + 3 if match2 else 3
+                        
+                        # Cap at 100%
+                        similarity_1_to_2 = min(similarity_1_to_2, 100)
+                        similarity_2_to_1 = min(similarity_2_to_1, 100)
 
-                if file1_name != file2_name:
-                    file1_obj = File.query.filter_by(upload_id=upload_id, stored_name=file1_name).first()
-                    file2_obj = File.query.filter_by(upload_id=upload_id, stored_name=file2_name).first()
+                        # Get detail URLs for both directions
+                        detail_link_1 = cols[0].find("a")
+                        detail_link_2 = cols[1].find("a")
+                        
+                        detail_url_1 = None
+                        detail_url_2 = None
+                        highlights_1_to_2 = {"matches": []}
+                        highlights_2_to_1 = {"matches": []}
 
-                    if file1_obj and file2_obj:
-                        comparison = Comparison(
-                            file1_id=file1_obj.file_id,
-                            file2_id=file2_obj.file_id,
-                            plagiarism_percent=similarity_percent,
-                            comparison_type='code',
-                            checked_at=datetime.utcnow()
-                        )
-                        db.session.add(comparison)
-                        db.session.commit()
+                        if detail_link_1 and detail_link_1.get("href"):
+                            detail_url_1 = urljoin(report_url, detail_link_1['href'])
+                            print(f"Analyzing: {file1_name} -> {file2_name} ({similarity_1_to_2}%)")
+                            highlights_1_to_2 = get_code_file_highlights(detail_url_1)
+                        
+                        if detail_link_2 and detail_link_2.get("href"):
+                            detail_url_2 = urljoin(report_url, detail_link_2['href'])
+                            print(f"Analyzing: {file2_name} -> {file1_name} ({similarity_2_to_1}%)")
+                            highlights_2_to_1 = get_code_file_highlights(detail_url_2)
 
+                        # Add both comparison directions to results
                         results.append({
-                            "file1": file1_name,
-                            "file2": file2_name,
-                            "similarity": f"{similarity_percent}%"
+                            "file1_name": file1_name,
+                            "file2_name": file2_name,
+                            "similarity_1_to_2": similarity_1_to_2,
+                            "similarity_2_to_1": similarity_2_to_1,
+                            "matches_1_to_2": highlights_1_to_2.get("matches", []),
+                            "matches_2_to_1": highlights_2_to_1.get("matches", []),
+                            "detail_url_1_to_2": detail_url_1,
+                            "detail_url_2_to_1": detail_url_2
                         })
 
-    # --- Calculate average similarities using your existing method ---
-    avg_results = calculate_avg_similarity_for_upload(upload_id)
+        print(f"Found {len(results)} comparison pairs")
+        return {
+            "message": "Code comparison completed successfully",
+            "report_url": report_url,
+            "total_comparisons": len(results),
+            "results": results
+        }
 
-    return {
-        "message": "MOSS check completed",
-        "report_url": report_url,
-        "matches": results,
-        "average_similarities": avg_results
-    }
+    except Exception as e:
+        print(f"Exception occurred: {str(e)}")
+        return {"error": f'Comparison failed: {str(e)}'}
 
-def get_code_file_highlights(report_url, comparison_obj):
+def get_code_file_highlights(report_url):
     """
     Extract highlighted code parts from a MOSS report for a single comparison.
-    Saves matches to MatchCode table and returns JSON formatted data.
-
-    Args:
-        report_url (str): URL of the MOSS report page.
-        comparison_obj (Comparison): SQLAlchemy Comparison object corresponding to this report.
-
-    Returns:
-        dict: { "matches": [ { "file1_id": ..., "file1_start": ..., "file1_end": ..., 
-                               "file2_id": ..., "file2_start": ..., "file2_end": ... }, ... ] }
+    Returns matched line ranges for both files.
     """
     try:
-        html = requests.get(report_url).text
+        response = requests.get(report_url, timeout=15)
+        response.raise_for_status()
+        html = response.text
+        
     except Exception as e:
-        return {"error": f"Failed to fetch MOSS report: {str(e)}"}
+        return {"error": f"Failed to fetch MOSS detail report: {str(e)}"}
 
     soup = BeautifulSoup(html, "html.parser")
-    code_tables = soup.find_all('table', {'class': 'src'})  # MOSS highlights tables
-
-    if len(code_tables) < 2:
-        return {"error": "Could not find code tables in MOSS detail page."}
-
-    def extract_ranges(table_tag):
-        ranges = []
-        start_line = None
-        end_line = None
-
-        for row in table_tag.find_all('tr'):
-            cols = row.find_all('td')
-            if len(cols) < 2:
-                continue
-
-            line_text = cols[0].get_text(strip=True)
-            code_cell = cols[1]
-
-            if code_cell.find('span', {'class': 'moss_h'}):
-                try:
-                    line_num = int(line_text)
-                    if start_line is None:
-                        start_line = line_num
-                    end_line = line_num
-                except ValueError:
-                    continue
-            else:
-                if start_line is not None:
-                    ranges.append((start_line, end_line))
-                    start_line = None
-                    end_line = None
-
-        if start_line is not None:
-            ranges.append((start_line, end_line))
-
-        return ranges
-
-    # Extract line ranges for file1 and file2
-    file1_ranges = extract_ranges(code_tables[0])
-    file2_ranges = extract_ranges(code_tables[1])
-
-    # Retrieve File objects
-    file1_obj = File.query.get(comparison_obj.file1_id)
-    file2_obj = File.query.get(comparison_obj.file2_id)
-
-    # Save each range into MatchCode table
-    matches = []
-    max_len = max(len(file1_ranges), len(file2_ranges))
-
-    for i in range(max_len):
-        f1_range = file1_ranges[i] if i < len(file1_ranges) else (None, None)
-        f2_range = file2_ranges[i] if i < len(file2_ranges) else (None, None)
-
-        match_entry = MatchCode(
-            comparison_id=comparison_obj.comparison_id,
-            file1_id=file1_obj.file_id,
-            file1_start=f1_range[0],
-            file1_end=f1_range[1],
-            file2_id=file2_obj.file_id,
-            file2_start=f2_range[0],
-            file2_end=f2_range[1]
-        )
-        db.session.add(match_entry)
-        matches.append({
-            "file1_id": file1_obj.file_id,
-            "file1_start": f1_range[0],
-            "file1_end": f1_range[1],
-            "file2_id": file2_obj.file_id,
-            "file2_start": f2_range[0],
-            "file2_end": f2_range[1]
-        })
-
-    db.session.commit()
-
+    
+    # Method 1: Look for line numbers in the most common patterns
+    matches = parse_moss_line_numbers(html)
+    
+    # If no matches found, try alternative parsing methods
+    if not matches:
+        matches = parse_alternative_structures(soup)
+    
     return {"matches": matches}
+
+def parse_moss_line_numbers(html):
+    """Parse line numbers from MOSS HTML using regex patterns"""
+    matches = []
+    
+    # Common MOSS patterns for line numbers
+    patterns = [
+        r'line[_\s]*(\d+)',      # line 123, line_123
+        r'\((\d+)\)',            # (123)
+        r'\[(\d+)\]',            # [123]
+        r'>(\d+)<',              # >123<
+        r'\.\.\.(\d+)',          # ...123
+        r'\b(\d{2,4})\b',        # standalone numbers (2-4 digits)
+    ]
+    
+    all_line_numbers = []
+    
+    for pattern in patterns:
+        line_numbers = re.findall(pattern, html, re.IGNORECASE)
+        if line_numbers:
+            # Convert to integers and filter reasonable line numbers
+            numbers = [int(num) for num in line_numbers if 1 <= int(num) <= 9999]
+            all_line_numbers.extend(numbers)
+    
+    # Remove duplicates and sort
+    all_line_numbers = sorted(set(all_line_numbers))
+    
+    print(f"Found {len(all_line_numbers)} unique line numbers")
+    
+    # Pair line numbers (assuming they alternate between file1 and file2)
+    for i in range(0, len(all_line_numbers) - 1, 2):
+        if i + 1 < len(all_line_numbers):
+            matches.append({
+                "file1_start": all_line_numbers[i],
+                "file1_end": all_line_numbers[i],
+                "file2_start": all_line_numbers[i + 1],
+                "file2_end": all_line_numbers[i + 1]
+            })
+    
+    return matches
+
+def parse_alternative_structures(soup):
+    """Alternative parsing methods for different MOSS formats"""
+    matches = []
+    
+    # Look for tables with code
+    tables = soup.find_all('table')
+    for table in tables:
+        # Look for rows with highlighting
+        rows = table.find_all('tr')
+        for row_num, row in enumerate(rows, 1):
+            # Check for highlighting
+            highlighted = False
+            if (row.find(style=re.compile(r'background', re.I)) or 
+                row.find(class_=re.compile(r'moss|highlight', re.I))):
+                highlighted = True
+            
+            if highlighted:
+                # Try to extract line number from row text
+                row_text = row.get_text()
+                line_match = re.search(r'(\d+)', row_text)
+                if line_match:
+                    line_num = int(line_match.group(1))
+                    # Simple pairing based on row order
+                    matches.append({
+                        "file1_start": line_num,
+                        "file1_end": line_num,
+                        "file2_start": line_num,
+                        "file2_end": line_num
+                    })
+    
+    return matches
+
+# ===== Utility function to display results nicely =====
+def print_comparison_results(results):
+    """Pretty print the comparison results"""
+    if "error" in results:
+        print(f"Error: {results['error']}")
+        return
+    
+    print(f"\n{'='*80}")
+    print("MOSS CODE COMPARISON RESULTS (BIDIRECTIONAL)")
+    print(f"{'='*80}")
+    print(f"Report URL: {results.get('report_url', 'N/A')}")
+    print(f"Total comparison pairs: {results.get('total_comparisons', 0)}")
+    print(f"{'='*80}")
+    
+    for i, result in enumerate(results.get('results', []), 1):
+        print(f"\n{i}. {result['file1_name']} <-> {result['file2_name']}")
+        print(f"   {result['file1_name']} -> {result['file2_name']}: {result['similarity_1_to_2']}%")
+        print(f"   {result['file2_name']} -> {result['file1_name']}: {result['similarity_2_to_1']}%")
+        
+        if result['matches_1_to_2']:
+            print(f"   Matched line ranges ({result['file1_name']} -> {result['file2_name']}):")
+            for match in result['matches_1_to_2']:
+                print(f"     {result['file1_name']}: lines {match['file1_start']}-{match['file1_end']}")
+                print(f"     {result['file2_name']}: lines {match['file2_start']}-{match['file2_end']}")
+        
+        if result['matches_2_to_1']:
+            print(f"   Matched line ranges ({result['file2_name']} -> {result['file1_name']}):")
+            for match in result['matches_2_to_1']:
+                print(f"     {result['file2_name']}: lines {match['file1_start']}-{match['file1_end']}")
+                print(f"     {result['file1_name']}: lines {match['file2_start']}-{match['file2_end']}")
+        
+        if not result['matches_1_to_2'] and not result['matches_2_to_1']:
+            print("   No specific line matches extracted")
