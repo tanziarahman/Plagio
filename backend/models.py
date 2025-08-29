@@ -50,7 +50,6 @@ class File(db.Model):
     comparisons_as_target = relationship("Comparison", foreign_keys='Comparison.file2_id',
                                          back_populates="file2", cascade="all, delete-orphan")
     
-    ai_results = relationship("AIDetectionResult", backref="file", cascade="all, delete-orphan")
 
     
     
