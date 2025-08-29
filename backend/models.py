@@ -49,6 +49,8 @@ class File(db.Model):
 
     comparisons_as_target = relationship("Comparison", foreign_keys='Comparison.file2_id',
                                          back_populates="file2", cascade="all, delete-orphan")
+    
+    ai_results = relationship("AIDetectionResult", backref="file", cascade="all, delete-orphan")
 
     
     
@@ -82,7 +84,6 @@ class AvgSimilarity(db.Model):
     average_similarity = db.Column(db.Float, nullable=False)
     calculated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relationships
     upload = db.relationship("Upload", back_populates="avg_similarities")
     file = db.relationship("File")
 
@@ -115,7 +116,7 @@ class MatchItem(db.Model):
     id = Column(Integer, primary_key=True, autoincrement=True)
     comparison_id = Column(Integer, ForeignKey('Comparisons.comparison_id', ondelete='CASCADE'), nullable=False)
 
-    match_type = Column(String(50))       # e.g. 'identical'
+    match_type = Column(String(50))      
     word_count = Column(Integer)
     index_start = Column(Integer)
     length = Column(Integer)
@@ -124,12 +125,12 @@ class MatchItem(db.Model):
     
     
 class AIDetectionResult(db.Model):
-    __tablename__ = 'AIDetectionResults'
+    _tablename_ = 'AIDetectionResults'
 
     detection_id = Column(Integer, primary_key=True, autoincrement=True)
-    file_id = Column(Integer, ForeignKey('Files.file_id', ondelete='CASCADE'), nullable=False)
-    ai_percentage = Column(Float, nullable=False)          # overall AI-generated percentage
-    score_html = Column(Text, nullable=False)              # heatmap HTML for highlighting
+    file_id = Column(Integer, ForeignKey('Files.file_id', ondelete='CASCADE'), nullable=False, unique=True)
+    ai_percentage = Column(Float, nullable=False)          
+    score_html = Column(Text, nullable=False)              
     detected_at = Column(DateTime, default=datetime.utcnow)
 
     file = relationship("File", backref="ai_results")
