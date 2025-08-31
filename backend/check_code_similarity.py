@@ -153,7 +153,7 @@ def extract_filename(text):
 
 def extract_similarity(text):
     match = re.search(r'\((\d+)%\)', text)
-    return int(match.group(1)) if match else None
+    return int(match.group(1)) if match else 0
 
 import requests
 from bs4 import BeautifulSoup
