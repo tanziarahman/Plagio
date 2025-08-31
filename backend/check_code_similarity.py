@@ -141,9 +141,14 @@ def parse_moss_report(report_url, file_paths, folder_path):
 
 
 
+# def extract_filename(text):
+#     match = re.search(r'([^/\\]+)\.\w+', text)
+#     return match.group(1) if match else None
+
 def extract_filename(text):
-    match = re.search(r'([^/\\]+)\.\w+', text)
+    match = re.search(r'([^/\\]+\.\w+)', text)
     return match.group(1) if match else None
+
 
 
 def extract_similarity(text):
@@ -291,58 +296,58 @@ def print_comparison_results(results):
 
 
 
-# def main():
-#     folder_path = input("Enter the path to the folder containing code files: ").strip()
-#     if not folder_path or not os.path.exists(folder_path):
-#         print("Invalid folder path. Exiting.")
-#         return
+def main():
+    folder_path = input("Enter the path to the folder containing code files: ").strip()
+    if not folder_path or not os.path.exists(folder_path):
+        print("Invalid folder path. Exiting.")
+        return
 
-#     language_choice = input("Enter programming language (press Enter for auto-detect): ").strip()
-#     language = language_choice if language_choice else None
+    language_choice = input("Enter programming language (press Enter for auto-detect): ").strip()
+    language = language_choice if language_choice else None
 
-#     print(f"\nStarting analysis of: {folder_path}")
-#     if language:
-#         print(f"Using language: {language}")
-#     else:
-#         print("Auto-detecting language...")
+    print(f"\nStarting analysis of: {folder_path}")
+    if language:
+        print(f"Using language: {language}")
+    else:
+        print("Auto-detecting language...")
 
-#     results = perform_code_comparison(folder_path, language)
-#     print_comparison_results(results)
+    results = perform_code_comparison(folder_path, language)
+    print_comparison_results(results)
 
-#     if 'results' in results and results['results']:
-#         total_comparisons = len(results['results'])
-#         avg_similarity = sum(max(r['similarity_1_to_2'], r['similarity_2_to_1']) for r in results['results']) / total_comparisons
-#         highest_pair = max(results['results'], key=lambda x: max(x['similarity_1_to_2'], x['similarity_2_to_1']))
-#         print(f"\nSummary:\nTotal comparisons: {total_comparisons}\nAverage similarity: {avg_similarity:.1f}%\nHighest similarity: {max(highest_pair['similarity_1_to_2'], highest_pair['similarity_2_to_1'])}% ({highest_pair['file1_name']} vs {highest_pair['file2_name']})")
-#         print(f"MOSS Report URL: {results.get('report_url')}")
-
-
-# if __name__ == "__main__":
-#     main()
+    if 'results' in results and results['results']:
+        total_comparisons = len(results['results'])
+        avg_similarity = sum(max(r['similarity_1_to_2'], r['similarity_2_to_1']) for r in results['results']) / total_comparisons
+        highest_pair = max(results['results'], key=lambda x: max(x['similarity_1_to_2'], x['similarity_2_to_1']))
+        print(f"\nSummary:\nTotal comparisons: {total_comparisons}\nAverage similarity: {avg_similarity:.1f}%\nHighest similarity: {max(highest_pair['similarity_1_to_2'], highest_pair['similarity_2_to_1'])}% ({highest_pair['file1_name']} vs {highest_pair['file2_name']})")
+        print(f"MOSS Report URL: {results.get('report_url')}")
 
 
-# def main():
-#     folder_path = input("Enter the path to the folder containing code files: ").strip()
-#     if not folder_path or not os.path.exists(folder_path):
-#         print("Invalid folder path. Exiting.")
-#         return
+if __name__ == "__main__":
+    main()
 
-#     # List all supported code files
-#     file_paths = [os.path.join(folder_path, f) for f in os.listdir(folder_path)
-#                   if f.lower().endswith(SUPPORTED_EXTENSIONS) and os.path.isfile(os.path.join(folder_path, f))]
 
-#     if not file_paths:
-#         print("No supported code files found in the folder.")
-#         return
+def main():
+    folder_path = input("Enter the path to the folder containing code files: ").strip()
+    if not folder_path or not os.path.exists(folder_path):
+        print("Invalid folder path. Exiting.")
+        return
 
-#     # Print the content of each file
-#     for file_path in file_paths:
-#         file_name = os.path.basename(file_path)
-#         code = fetch_full_code_from_file(file_path)
-#         print(f"\n{'='*80}")
-#         print(f"Full code of {file_name}:\n")
-#         print(code)
-#         print(f"{'='*80}\n")
+    # List all supported code files
+    file_paths = [os.path.join(folder_path, f) for f in os.listdir(folder_path)
+                  if f.lower().endswith(SUPPORTED_EXTENSIONS) and os.path.isfile(os.path.join(folder_path, f))]
 
-# if __name__ == "__main__":
-#     main()
+    if not file_paths:
+        print("No supported code files found in the folder.")
+        return
+
+    # Print the content of each file
+    for file_path in file_paths:
+        file_name = os.path.basename(file_path)
+        code = fetch_full_code_from_file(file_path)
+        print(f"\n{'='*80}")
+        print(f"Full code of {file_name}:\n")
+        print(code)
+        print(f"{'='*80}\n")
+
+if __name__ == "__main__":
+    main()
