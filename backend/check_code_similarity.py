@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 import re
 import time
 from urllib.parse import urljoin
+from itertools import combinations
+
 
 SUPPORTED_EXTENSIONS = ('.py', '.c', '.cpp', '.java', '.js', '.cs', '.php', '.rb', '.go')
 
@@ -34,7 +36,7 @@ def perform_code_comparison(folder_path, language=None):
     print(f"Using language: {language}")
 
     try:
-        m = mosspy.Moss(266483722, language)
+        m = mosspy.Moss(597146140, language)
         for file_path in file_paths:
             print(f"Adding file: {os.path.basename(file_path)}")
             m.addFile(file_path)
@@ -64,25 +66,115 @@ def perform_code_comparison(folder_path, language=None):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {"error": f'Comparison failed: {str(e)}'}
+        return {
+            "error": f"Comparison failed: {str(e)}",
+            "results": []
+        }
+
+
+
+# def parse_moss_report(report_url, file_paths, folder_path):
+#     try:
+#         response = requests.get(report_url)
+#         html = response.text 
+
+#         with open("moss_report_debug.html", "w", encoding="utf-8") as f:
+#             f.write(html)
+#         print("✅ Saved MOSS report HTML to 'moss_report_debug.html'")
+
+#         soup = BeautifulSoup(html, "html.parser")
+#         results = []
+
+#         tables = soup.find_all("table")
+#         print(f"Found {len(tables)} tables in the report")
+
+#         for table in tables:
+#             rows = table.find_all("tr")
+#             for row_idx, row in enumerate(rows):
+#                 if row_idx == 0:  # skip header
+#                     continue
+
+#                 cols = row.find_all("td")
+#                 if len(cols) < 2:
+#                     continue
+
+#                 col1_text, col2_text = cols[0].get_text(strip=True), cols[1].get_text(strip=True)
+#                 file1_name, file2_name = extract_filename(col1_text), extract_filename(col2_text)
+
+#                 if not (file1_name and file2_name and file1_name != file2_name):
+#                     continue
+
+#                 sim1 = min(extract_similarity(col1_text) + 3, 100) if extract_similarity(col1_text) else 0
+#                 sim2 = min(extract_similarity(col2_text) + 3, 100) if extract_similarity(col2_text) else 0
+
+#                 detail_url_1 = urljoin(report_url, cols[0].find("a")["href"]) if cols[0].find("a") else None
+#                 detail_url_2 = urljoin(report_url, cols[1].find("a")["href"]) if cols[1].find("a") else None
+
+#                 matches_1_to_2 = extract_matches_from_detail(detail_url_1) if detail_url_1 else []
+#                 matches_2_to_1 = extract_matches_from_detail(detail_url_2) if detail_url_2 else []
+                
+#                 file1_code, file2_code = "", ""
+#                 if detail_url_1:
+#                     # Get the full file path by matching name
+#                     # file1_full_path = next((f for f in file_paths if os.path.splitext(os.path.basename(f))[0] == file1_name), None)
+#                     # file2_full_path = next((f for f in file_paths if os.path.splitext(os.path.basename(f))[0] == file2_name), None)
+                    
+#                     file1_full_path = next((f for f in file_paths if os.path.basename(f) == file1_name),None)
+#                     file2_full_path = next((f for f in file_paths if os.path.basename(f) == file2_name),None)
+
+
+#                     # file1_code = fetch_full_code_from_file(file1_full_path) if file1_full_path else ""
+#                     # file2_code = fetch_full_code_from_file(file2_full_path) if file2_full_path else ""
+
+
+
+#                 results.append({
+#                     "file1_name": file1_name,
+#                     "file2_name": file2_name,
+#                     "similarity_1_to_2": sim1,
+#                     "similarity_2_to_1": sim2,
+#                     "matches_1_to_2": matches_1_to_2,
+#                     "matches_2_to_1": matches_2_to_1,
+#                     "detail_url_1_to_2": detail_url_1,
+#                     "detail_url_2_to_1": detail_url_2,
+#                     # "file1_code": file1_code,
+#                     # "file2_code": file2_code
+#                 })
+#                 print(f"    ✅ Added comparison: {file1_name} vs {file2_name}")
+
+#         return results
+
+#     except Exception as e:
+#         print(f"Error parsing MOSS report: {e}")
+#         return []
+
+
+
+# def extract_filename(text):
+#     match = re.search(r'([^/\\]+)\.\w+', text)
+#     return match.group(1) if match else None
+
 
 
 
 def parse_moss_report(report_url, file_paths, folder_path):
     try:
         response = requests.get(report_url)
-        html = response.text
+        html = response.text 
 
         with open("moss_report_debug.html", "w", encoding="utf-8") as f:
             f.write(html)
         print("✅ Saved MOSS report HTML to 'moss_report_debug.html'")
 
         soup = BeautifulSoup(html, "html.parser")
-        results = []
+        parsed_results = []
 
         tables = soup.find_all("table")
+        if not tables:
+            raise ValueError("XML parsing failed: No tables found in MOSS report")
         print(f"Found {len(tables)} tables in the report")
 
+        # --- Parse pairs that DO exist in the report ---
         for table in tables:
             rows = table.find_all("tr")
             for row_idx, row in enumerate(rows):
@@ -107,43 +199,49 @@ def parse_moss_report(report_url, file_paths, folder_path):
 
                 matches_1_to_2 = extract_matches_from_detail(detail_url_1) if detail_url_1 else []
                 matches_2_to_1 = extract_matches_from_detail(detail_url_2) if detail_url_2 else []
-                
-                file1_code, file2_code = "", ""
-                if detail_url_1:
-                    # Get the full file path by matching name
-                    file1_full_path = next((f for f in file_paths if os.path.splitext(os.path.basename(f))[0] == file1_name), None)
-                    file2_full_path = next((f for f in file_paths if os.path.splitext(os.path.basename(f))[0] == file2_name), None)
 
-                    file1_code = fetch_full_code_from_file(file1_full_path) if file1_full_path else ""
-                    file2_code = fetch_full_code_from_file(file2_full_path) if file2_full_path else ""
-
-
-
-                results.append({
+                parsed_results.append({
                     "file1_name": file1_name,
                     "file2_name": file2_name,
                     "similarity_1_to_2": sim1,
                     "similarity_2_to_1": sim2,
                     "matches_1_to_2": matches_1_to_2,
-                     "matches_2_to_1": matches_2_to_1,
+                    "matches_2_to_1": matches_2_to_1,
                     "detail_url_1_to_2": detail_url_1,
-                    "detail_url_2_to_1": detail_url_2,
-                    "file1_code": file1_code,
-                    "file2_code": file2_code
+                    "detail_url_2_to_1": detail_url_2
                 })
                 print(f"    ✅ Added comparison: {file1_name} vs {file2_name}")
 
-        return results
+        # --- Fill in missing pairs with 0 similarity ---
+        all_results = []
+        file_names = [os.path.basename(f) for f in file_paths]
+
+        for f1, f2 in combinations(file_names, 2):
+            existing = next((r for r in parsed_results if 
+                             (r["file1_name"] == f1 and r["file2_name"] == f2) or
+                             (r["file1_name"] == f2 and r["file2_name"] == f1)), None)
+
+            if existing:
+                all_results.append(existing)
+            else:
+                all_results.append({
+                    "file1_name": f1,
+                    "file2_name": f2,
+                    "similarity_1_to_2": 0,
+                    "similarity_2_to_1": 0,
+                    "matches_1_to_2": [],
+                    "matches_2_to_1": [],
+                    "detail_url_1_to_2": None,
+                    "detail_url_2_to_1": None
+                })
+                print(f"    ⚪ No similarity found: {f1} vs {f2}")
+
+        return all_results
 
     except Exception as e:
-        print(f"Error parsing MOSS report: {e}")
-        return []
+        raise RuntimeError(f"XML parsing failed: {str(e)}")
 
 
-
-# def extract_filename(text):
-#     match = re.search(r'([^/\\]+)\.\w+', text)
-#     return match.group(1) if match else None
 
 def extract_filename(text):
     match = re.search(r'([^/\\]+\.\w+)', text)
@@ -244,13 +342,23 @@ def extract_line_range(text):
             return int(parts[0]), int(parts[1])
     return None
 
+# def fetch_full_code_from_file(file_path):
+#     try:
+#         with open(file_path, "r", encoding="utf-8") as f:
+#             return f.read()
+#     except Exception as e:
+#         print(f"Failed to read {file_path}: {e}")
+#         return ""
+
+
 def fetch_full_code_from_file(file_path):
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             return f.read()
     except Exception as e:
         print(f"Failed to read {file_path}: {e}")
         return ""
+
 
 
 
@@ -283,47 +391,15 @@ def print_comparison_results(results):
             for m in result['matches_2_to_1']:
                 print(f"     {result['file2_name']}: lines {m['file2_start']}-{m['file2_end']}")
                 print(f"     {result['file1_name']}: lines {m['file1_start']}-{m['file1_end']}")
+
         if not result['matches_1_to_2'] and not result['matches_2_to_1']:
             print("   No specific line matches extracted")
 
-        # Print full code for both files
-        print(f"\nFull code of {result['file1_name']}:\n{result['file1_code']}")
-        print(f"\nFull code of {result['file2_name']}:\n{result['file2_code']}")
-
-
+        # Only print detail URLs, not file content
         print(f"\n   Detail URLs: {result.get('detail_url_1_to_2', 'N/A')} | {result.get('detail_url_2_to_1', 'N/A')}")
         print(f"{'='*80}")
 
 
-
-def main():
-    folder_path = input("Enter the path to the folder containing code files: ").strip()
-    if not folder_path or not os.path.exists(folder_path):
-        print("Invalid folder path. Exiting.")
-        return
-
-    language_choice = input("Enter programming language (press Enter for auto-detect): ").strip()
-    language = language_choice if language_choice else None
-
-    print(f"\nStarting analysis of: {folder_path}")
-    if language:
-        print(f"Using language: {language}")
-    else:
-        print("Auto-detecting language...")
-
-    results = perform_code_comparison(folder_path, language)
-    print_comparison_results(results)
-
-    if 'results' in results and results['results']:
-        total_comparisons = len(results['results'])
-        avg_similarity = sum(max(r['similarity_1_to_2'], r['similarity_2_to_1']) for r in results['results']) / total_comparisons
-        highest_pair = max(results['results'], key=lambda x: max(x['similarity_1_to_2'], x['similarity_2_to_1']))
-        print(f"\nSummary:\nTotal comparisons: {total_comparisons}\nAverage similarity: {avg_similarity:.1f}%\nHighest similarity: {max(highest_pair['similarity_1_to_2'], highest_pair['similarity_2_to_1'])}% ({highest_pair['file1_name']} vs {highest_pair['file2_name']})")
-        print(f"MOSS Report URL: {results.get('report_url')}")
-
-
-if __name__ == "__main__":
-    main()
 
 
 def main():
@@ -340,7 +416,7 @@ def main():
         print("No supported code files found in the folder.")
         return
 
-    # Print the content of each file
+    # Step 1: Print the content of each file (preview)
     for file_path in file_paths:
         file_name = os.path.basename(file_path)
         code = fetch_full_code_from_file(file_path)
@@ -348,6 +424,29 @@ def main():
         print(f"Full code of {file_name}:\n")
         print(code)
         print(f"{'='*80}\n")
+
+    # Step 2: Ask for language (optional override)
+    language_choice = input("Enter programming language (press Enter for auto-detect): ").strip()
+    language = language_choice if language_choice else None
+
+    # Step 3: Run comparison
+    print(f"\nStarting analysis of: {folder_path}")
+    results = perform_code_comparison(folder_path, language)
+
+    # Step 4: Print comparison results
+    print_comparison_results(results)
+
+    # Step 5: Print summary stats
+    if 'results' in results and results['results']:
+        total_comparisons = len(results['results'])
+        avg_similarity = sum(max(r['similarity_1_to_2'], r['similarity_2_to_1']) for r in results['results']) / total_comparisons
+        highest_pair = max(results['results'], key=lambda x: max(x['similarity_1_to_2'], x['similarity_2_to_1']))
+        print(f"\nSummary:\n"
+              f"Total comparisons: {total_comparisons}\n"
+              f"Average similarity: {avg_similarity:.1f}%\n"
+              f"Highest similarity: {max(highest_pair['similarity_1_to_2'], highest_pair['similarity_2_to_1'])}% "
+              f"({highest_pair['file1_name']} vs {highest_pair['file2_name']})")
+        print(f"MOSS Report URL: {results.get('report_url')}")
 
 if __name__ == "__main__":
     main()

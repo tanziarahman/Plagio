@@ -8,6 +8,7 @@ avgSimilarity_bp = Blueprint('average-similarity', __name__)
 @avgSimilarity_bp.route('/average-similarity', methods=['GET'])
 @login_required
 def get_avg_similarity():
+    # Change this line to read from query parameters instead of JSON
     upload_id = request.args.get('upload_id', type=int)
     
     if not upload_id:
