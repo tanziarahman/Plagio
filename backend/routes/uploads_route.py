@@ -16,7 +16,7 @@ def get_user_uploads():
     upload_data = [{
         'upload_id': upload.upload_id,
         'session_name': upload.session_name,
-        'comparison_type': upload.upload_type,
+        'upload_type': upload.upload_type,
         'created_at': upload.created_at.isoformat(),
         'file_count': len(upload.files)
     } for upload in uploads]

@@ -8,9 +8,9 @@ from models import db, Upload, File
 upload_bp = Blueprint("upload", __name__)
 
 ALLOWED_EXTENSIONS_BY_TYPE = {
-    "text": {"txt", "docx"},
+    "text": {"txt", "docx", "pdf"},
     "code": {"py", "java", "cpp", "c", "js", "ts", "rb", "php"},
-    "ai": {"txt", "docx"}
+    "ai": {"txt", "docx", "pdf"}
 }
 
 def allowed_file(filename, upload_type):
@@ -95,3 +95,6 @@ def upload_files():
         "upload_type": upload_type,
         "files": saved_files
     }), 201
+    
+    
+
