@@ -20,14 +20,33 @@ const HistoryPage = () => {
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState('');
 
+  // Fetch current user email
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/me', { withCredentials: true });
+        if (response.data?.email) setUserEmail(response.data.email);
+      } catch (err) {
+        console.error('Failed to fetch user:', err);
+        setUserEmail('user@example.com');
+      }
+    };
+    fetchUser();
+  }, []);
+
+  // Fetch uploads on mount
   useEffect(() => {
     const fetchUploads = async () => {
       try {
-        const response = await axios.get('/api/uploads');
+        const response = await axios.get('http://localhost:5000/uploads', { 
+          withCredentials: true 
+        });
+        console.log('Uploads data:', response.data); // Debug log
+        
         if (response.data && response.data.uploads) {
           setScans(response.data.uploads.map(upload => ({
             id: upload.upload_id,
-            type: upload.comparison_type,
+            type: upload.upload_type,
             name: upload.session_name,
             date: new Date(upload.created_at).toLocaleDateString('en-US', { 
               month: 'short', 
@@ -39,58 +58,89 @@ const HistoryPage = () => {
         }
       } catch (error) {
         console.error('Error fetching uploads:', error);
+        // Check if it's an authentication error
+        if (error.response && error.response.status === 401) {
+          console.log('User not authenticated, redirecting to login');
+          navigate('/login');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    const fetchUserEmail = async () => {
-      try {
-        const response = await axios.get('/api/user');
-        if (response.data && response.data.email) {
-          setUserEmail(response.data.email);
-        }
-      } catch (error) {
-        console.error('Error fetching user email:', error);
-      }
-    };
-
     fetchUploads();
-    fetchUserEmail();
-  }, []);
+  }, [navigate]);
 
+  // Filter scans based on search query
   const filteredScans = scans.filter(scan => 
     scan.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     scan.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Delete a scan
   const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this upload?")) return;
+    
     try {
-      await axios.delete('/api/delete_upload', {
-        params: { upload_id: id }
+      const response = await axios.delete('http://localhost:5000/delete_upload', { 
+        params: { upload_id: id },
+        withCredentials: true
       });
-      setScans(scans.filter(scan => scan.id !== id));
+      
+      console.log('Delete response:', response.data);
+      
+      if (response.status === 200) {
+        setScans(scans.filter(scan => scan.id !== id));
+      } else {
+        alert('Failed to delete upload');
+      }
     } catch (error) {
       console.error('Error deleting upload:', error);
+      
+      if (error.response) {
+        alert(`Delete failed: ${error.response.data.error || error.response.data.message || 'Unknown error'}`);
+      } else if (error.request) {
+        alert('Delete failed: No response from server. Please check your connection.');
+      } else {
+        alert('Delete failed: Could not send request');
+      }
     }
   };
 
+  // Logout function
   const handleLogout = async () => {
     try {
-      await axios.post('/auth/logout');
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
+      const res = await fetch('http://localhost:5000/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        window.location.href = '/login';
+      } else {
+        const data = await res.json();
+        alert(data.message || 'Logout failed');
+      }
+    } catch {
+      alert('Network error during logout');
     }
   };
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
+  // Navigate to new scan
+  const handleNewScan = () => navigate('/plagio-dashboard');
+
+  // Navigate to scan result page with uploadId
+  const handleViewResult = (uploadId, scanType, scanName) => {
+    navigate('/results', { 
+      state: { 
+        uploadId, 
+        scanType, 
+        analysisName: scanName,
+        files: [] // You might want to fetch files data if needed
+      } 
+    });
   };
 
-  const handleNewScan = () => {
-    navigate('/plagio-dashboard');
-  };
+  const toggleSidebar = () => setSidebarCollapsed(!sidebarCollapsed);
 
   const getIconForType = (type) => {
     switch (type.toLowerCase()) {
@@ -101,230 +151,54 @@ const HistoryPage = () => {
   };
 
   const styles = {
-    dashboard: {
-      display: 'flex',
-      height: '100vh',
-      fontFamily: 'Arial, sans-serif',
-      backgroundColor: '#f5f5f5'
-    },
-    sidebar: {
-      width: sidebarCollapsed ? '60px' : '200px',
-      backgroundColor: '#2c3e50',
-      color: 'white',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-      transition: 'width 0.3s ease',
-      position: 'relative',
-      padding: '20px 0 0 0'
-    },
-    sidebarCollapseButton: {
-      position: 'absolute',
-      right: '-15px',
-      top: '20px',
-      backgroundColor: '#34495e',
-      border: 'none',
-      color: 'white',
-      borderRadius: '50%',
-      width: '30px',
-      height: '30px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      cursor: 'pointer',
-      zIndex: 1,
-      boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-    },
-    logo: {
-      padding: '0 20px 20px',
-      fontSize: '24px',
-      fontWeight: 'bold',
-      borderBottom: '1px solid #34495e',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      cursor: 'pointer'
-    },
-    menuItem: {
-      padding: '12px 20px',
-      cursor: 'pointer',
-      transition: 'background-color 0.3s',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      ':hover': {
-        backgroundColor: '#34495e'
-      }
-    },
-    activeMenuItem: {
-      backgroundColor: '#1abc9c',
-      fontWeight: 'bold'
-    },
-    logoutButton: {
-      padding: '12px 0',
-      cursor: 'pointer',
-      backgroundColor: '#e74c3c',
-      border: 'none',
-      color: 'white',
-      width: '100%',
-      textAlign: 'center',
-      transition: 'background-color 0.3s',
-      ':hover': {
-        backgroundColor: '#c0392b'
-      },
-      marginTop: 'auto',
-      borderBottomLeftRadius: '4px'
-    },
-    mainContent: {
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column'
-    },
-    topBar: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '15px 20px',
-      backgroundColor: '#3498db',
-      color: 'white',
-      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-    },
-    userEmail: {
-      fontWeight: 'bold'
-    },
-    searchBar: {
-      padding: '15px 20px',
-      display: 'flex',
-      alignItems: 'center',
-      backgroundColor: 'white',
-      borderBottom: '1px solid #ecf0f1'
-    },
-    searchInputContainer: {
-      flex: 1,
-      position: 'relative',
-      marginRight: '10px',
-      display: 'flex',
-      alignItems: 'center'
-    },
-    searchIcon: {
-      position: 'absolute',
-      left: '15px',
-      color: '#7f8c8d'
-    },
-    searchInput: {
-      width: '100%',
-      padding: '8px 15px 8px 40px',
-      border: '1px solid #bdc3c7',
-      borderRadius: '4px'
-    },
-    newScanButton: {
-      padding: '8px 15px',
-      backgroundColor: '#1abc9c',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      transition: 'background-color 0.3s',
-      ':hover': {
-        backgroundColor: '#16a085'
-      }
-    },
-    scanHistory: {
-      flex: 1,
-      padding: '20px',
-      overflowY: 'auto'
-    },
-    historyHeader: {
-      display: 'flex',
-      padding: '12px 15px',
-      backgroundColor: '#34495e',
-      color: 'white',
-      fontWeight: 'bold'
-    },
-    historyRow: {
-      display: 'flex',
-      padding: '12px 15px',
-      backgroundColor: 'white',
-      borderBottom: '1px solid #ecf0f1',
-      alignItems: 'center'
-    },
-    typeColumn: {
-      width: '120px',
-      padding: '0 10px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
-    nameColumn: {
-      flex: 2,
-      padding: '0 10px'
-    },
-    dateColumn: {
-      width: '120px',
-      padding: '0 10px'
-    },
-    smallColumn: {
-      width: '100px',
-      display: 'flex',
-      justifyContent: 'center'
-    },
-    actionButton: {
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      padding: '5px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '18px',
-      transition: 'all 0.2s',
-      ':hover': {
-        transform: 'scale(1.1)'
-      }
-    },
-    viewButton: {
-      color: '#3498db'
-    },
-    deleteButton: {
-      color: '#e74c3c'
-    },
-    actionGroup: {
-      display: 'flex',
-      gap: '15px'
-    }
+    dashboard: { display: 'flex', minHeight: '100vh', fontFamily: 'Arial, sans-serif', backgroundColor: '#f5f5f5' },
+    sidebar: { width: sidebarCollapsed ? '60px' : '200px', backgroundColor: '#2c3e50', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'width 0.3s ease', position: 'relative', paddingTop: '20px', minHeight: '100vh' },
+    sidebarCollapseButton: { position: 'absolute', right: '-15px', top: '20px', backgroundColor: '#34495e', border: 'none', color: 'white', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 1, boxShadow: '0 2px 5px rgba(0,0,0,0.2)' },
+    logo: { padding: '0 20px 20px', fontSize: '24px', fontWeight: 'bold', borderBottom: '1px solid #34495e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' },
+    menuItem: { padding: '12px 20px', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    activeMenuItem: { backgroundColor: '#1abc9c', fontWeight: 'bold' },
+    logoutButton: { padding: '12px 0', cursor: 'pointer', backgroundColor: '#e74c3c', border: 'none', color: 'white', width: '100%', textAlign: 'center', position: 'absolute', bottom: 0, left: 0, right: 0, borderBottomLeftRadius: '4px' },
+    mainContent: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' },
+    topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', backgroundColor: '#347adbff', color: 'white', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', height: '60px', boxSizing: 'border-box' },
+    userEmail: { fontWeight: 'bold' },
+    searchBar: { padding: '15px 20px', display: 'flex', alignItems: 'center', backgroundColor: 'white', borderBottom: '1px solid #ecf0f1' },
+    searchInputContainer: { flex: 1, position: 'relative', marginRight: '10px', display: 'flex', alignItems: 'center' },
+    searchIcon: { position: 'absolute', left: '15px', color: '#7f8c8d' },
+    searchInput: { width: '100%', padding: '8px 15px 8px 40px', border: '1px solid bdc3c7', borderRadius: '4px', fontSize: '16px' },
+    newScanButton: { padding: '8px 15px', backgroundColor: '#1abc9c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px' },
+    scanHistory: { flex: 1, padding: '20px', overflowY: 'auto' },
+    historyHeader: { display: 'flex', padding: '12px 15px', backgroundColor: '#34495e', color: 'white', fontWeight: 'bold' },
+    historyRow: { display: 'flex', padding: '12px 15px', backgroundColor: 'white', borderBottom: '1px solid #ecf0f1', alignItems: 'center' },
+    typeColumn: { width: '120px', padding: '0 10px', display: 'flex', alignItems: 'center', gap: '8px' },
+    nameColumn: { flex: 2, padding: '0 10px' },
+    dateColumn: { width: '120px', padding: '0 10px' },
+    smallColumn: { width: '100px', display: 'flex', justifyContent: 'center' },
+    actionButton: { background: 'none', border: 'none', cursor: 'pointer', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' },
+    viewButton: { color: '#3498db' },
+    deleteButton: { color: '#e74c3c' },
+    actionGroup: { display: 'flex', gap: '15px' }
   };
 
   return (
     <div style={styles.dashboard}>
       {/* Sidebar */}
       <div style={styles.sidebar}>
-        <button 
-          style={styles.sidebarCollapseButton}
-          onClick={toggleSidebar}
-        >
+        <button style={styles.sidebarCollapseButton} onClick={toggleSidebar}>
           {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
         </button>
-        
+
         <div>
           <div style={styles.logo} onClick={() => navigate('/plagio-dashboard')}>
             {sidebarCollapsed ? 'P' : 'PLAGIO'}
           </div>
-          <div 
-            style={styles.menuItem}
-            onClick={() => navigate('/plagio-dashboard')}
-          >
+          <div style={styles.menuItem} onClick={() => navigate('/plagio-dashboard')}>
             {sidebarCollapsed ? 'N' : 'New Scan'}
           </div>
-          <div 
-            style={{
-              ...styles.menuItem,
-              ...styles.activeMenuItem
-            }}
-          >
+          <div style={{ ...styles.menuItem, ...styles.activeMenuItem }}>
             {sidebarCollapsed ? 'M' : 'My Scans'}
           </div>
         </div>
-        
+
         <button style={styles.logoutButton} onClick={handleLogout}>
           {sidebarCollapsed ? 'L' : 'Logout'}
         </button>
@@ -332,13 +206,13 @@ const HistoryPage = () => {
 
       {/* Main Content */}
       <div style={styles.mainContent}>
-        {/* Top Bar with User Email */}
+        {/* Top Bar */}
         <div style={styles.topBar}>
           <div></div>
           <div style={styles.userEmail}>{userEmail}</div>
         </div>
 
-        {/* Search Bar with Integrated Search Icon */}
+        {/* Search Bar */}
         <div style={styles.searchBar}>
           <div style={styles.searchInputContainer}>
             <FiSearch style={styles.searchIcon} />
@@ -350,10 +224,7 @@ const HistoryPage = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <button 
-            style={styles.newScanButton} 
-            onClick={handleNewScan}
-          >
+          <button style={styles.newScanButton} onClick={handleNewScan}>
             + New Scan
           </button>
         </div>
@@ -368,35 +239,40 @@ const HistoryPage = () => {
             <div style={styles.smallColumn}>Actions</div>
           </div>
 
-          {filteredScans.map(scan => (
-            <div key={scan.id} style={styles.historyRow}>
-              <div style={styles.typeColumn}>
-                {getIconForType(scan.type)}
-                {scan.type}
-              </div>
-              <div style={styles.nameColumn}>{scan.name}</div>
-              <div style={styles.dateColumn}>{scan.date}</div>
-              <div style={styles.smallColumn}>
-                <button 
-                  style={{...styles.actionButton, ...styles.viewButton}}
-                  title="View"
-                >
-                  <FiEye />
-                </button>
-              </div>
-              <div style={styles.smallColumn}>
-                <div style={styles.actionGroup}>
-                  <button 
-                    style={{...styles.actionButton, ...styles.deleteButton}}
-                    onClick={() => handleDelete(scan.id)}
-                    title="Delete"
+          {loading ? (
+            <div style={{ padding: '20px', textAlign: 'center' }}>Loading scans...</div>
+          ) : (
+            filteredScans.map(scan => (
+              <div key={scan.id} style={styles.historyRow}>
+                <div style={styles.typeColumn}>
+                  {getIconForType(scan.type)}
+                  {scan.type}
+                </div>
+                <div style={styles.nameColumn}>{scan.name}</div>
+                <div style={styles.dateColumn}>{scan.date}</div>
+                <div style={styles.smallColumn}>
+                  <button
+                    style={{ ...styles.actionButton, ...styles.viewButton }}
+                    onClick={() => handleViewResult(scan.id, scan.type, scan.name)}
+                    title="View Results"
                   >
-                    <FiTrash2 />
+                    <FiEye />
                   </button>
                 </div>
+                <div style={styles.smallColumn}>
+                  <div style={styles.actionGroup}>
+                    <button
+                      style={{ ...styles.actionButton, ...styles.deleteButton }}
+                      onClick={() => handleDelete(scan.id)}
+                      title="Delete"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -404,3 +280,5 @@ const HistoryPage = () => {
 };
 
 export default HistoryPage;
+
+

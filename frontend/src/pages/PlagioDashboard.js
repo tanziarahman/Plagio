@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiChevronLeft, FiChevronRight, FiTrash2, FiUpload, FiCheckCircle } from 'react-icons/fi';
 import axios from 'axios';
+import { FiChevronLeft, FiChevronRight, FiTrash2, FiUpload, FiCheckCircle } from 'react-icons/fi';
 
 const PlagioDashboard = ({ defaultScanType = null }) => {
   // State Management
@@ -17,22 +17,40 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
   const [scanComplete, setScanComplete] = useState(false);
   const [showFileWarning, setShowFileWarning] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [uploadId, setUploadId] = useState(null);
 
-  // Fetch user email on component mount
-  React.useEffect(() => {
-    const fetchUserEmail = async () => {
+  // Fetch current user email
+  useEffect(() => {
+    const fetchUser = async () => {
       try {
-        const response = await axios.get('/api/user');
-        if (response.data && response.data.email) {
-          setUserEmail(response.data.email);
-        }
-      } catch (error) {
-        console.error('Error fetching user email:', error);
+        const response = await axios.get('http://localhost:5000/me', { withCredentials: true });
+
+        if (response.data?.email) setUserEmail(response.data.email);
+      } catch (err) {
+        console.error('Failed to fetch user:', err);
+        setUserEmail('user@example.com');
       }
     };
-
-    fetchUserEmail();
+    fetchUser();
   }, []);
+
+  // Logout function
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        window.location.href = '/login';
+      } else {
+        const data = await res.json();
+        alert(data.message || 'Logout failed');
+      }
+    } catch {
+      alert('Network error during logout');
+    }
+  };
 
   // Embedded CSS Animation
   const GlobalStyles = () => (
@@ -63,8 +81,8 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
 
   const isValidFile = (file) => {
     const extension = file.name.split('.').pop().toLowerCase();
-    if (scanType === 'ai' || scanType === 'text') return ['txt', 'docx'].includes(extension);
-    if (scanType === 'code') return ['c', 'cpp', 'py'].includes(extension);
+    if (scanType === 'ai' || scanType === 'text') return ['txt', 'docx', 'pdf'].includes(extension);
+    if (scanType === 'code') return ['c', 'cpp', 'py', 'java'].includes(extension);
     return false;
   };
 
@@ -77,27 +95,26 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
     if (e.target.files?.length > 0) {
       const validFiles = Array.from(e.target.files).filter(isValidFile);
       const invalidFiles = Array.from(e.target.files).filter(f => !isValidFile(f));
-      
+
       if (invalidFiles.length > 0) {
-        setUploadError(`Invalid file type. Allowed: ${scanType === 'code' ? '.c, .cpp, .py' : '.txt, .docx'}`);
+        setUploadError(`Invalid file type. Allowed: ${scanType === 'code' ? '.c, .cpp, .py, .java' : '.txt, .docx, .pdf'}`);
       } else {
         setUploadError('');
       }
 
-      const newFiles = validFiles.filter(newFile => 
-        !files.some(existingFile => 
+      const newFiles = validFiles.filter(newFile =>
+        !files.some(existingFile =>
           existingFile.name === newFile.name && existingFile.size === newFile.size
         )
       );
-      
+
       if (newFiles.length < validFiles.length) {
         setUploadError(prev => prev ? `${prev}. Note: Duplicate files ignored` : 'Note: Duplicate files ignored');
       }
-      
+
       const updatedFiles = [...files, ...newFiles];
       setFiles(updatedFiles);
-      
-      // FIXED: Only show the warning message, don't set upload error
+
       if ((scanType === 'text' || scanType === 'code') && updatedFiles.length === 1) {
         setShowFileWarning(true);
       } else {
@@ -124,36 +141,27 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
     const newFiles = [...files];
     newFiles.splice(index, 1);
     setFiles(newFiles);
-    
-    // Check if warning should be removed
+
     if ((scanType === 'text' || scanType === 'code') && newFiles.length !== 1) {
       setShowFileWarning(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await axios.post('/auth/logout');
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
     }
   };
 
   const handleScan = async () => {
     if (!scanType) return setUploadError('Select scan type first');
     if (!analysisName.trim()) return setAnalysisError('Enter analysis name');
-    
+
     const minFiles = scanType === 'ai' ? 1 : 2;
     if (files.length < minFiles) {
       return setUploadError(`Upload at least ${minFiles} file(s)`);
     }
-    
+
     setAnalysisError('');
     setUploadError('');
     setIsScanning(true);
-    
+
     try {
+      // Step 1: Upload files
       const formData = new FormData();
       formData.append('scanType', scanType);
       formData.append('analysis_name', analysisName);
@@ -161,36 +169,50 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       files.forEach(file => {
         formData.append('files', file);
       });
-      
-      const response = await axios.post('/api/upload', formData, {
+
+      const uploadResponse = await axios.post('http://localhost:5000/upload', formData, {
+        withCredentials: true,
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
-      if (response.status === 201) {
-        setScanComplete(true);
-        // Store upload_id for later use
-        localStorage.setItem('currentUploadId', response.data.upload_id);
+
+      const uploadId = uploadResponse.data.upload_id;
+      setUploadId(uploadId);
+
+      // Step 2: Perform comparison based on scan type
+      if (scanType === 'text') {
+        await axios.post('http://localhost:5000/compare-txt', {
+          upload_id: uploadId
+        }, {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+      } else if (scanType === 'code') {
+        await axios.post('http://localhost:5000/compare-code', {
+          upload_id: uploadId
+        }, {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
       }
+      // For AI scans, you would call a different endpoint here
+
+      setScanComplete(true);
     } catch (error) {
-      setUploadError('Upload failed. Please try again.');
-      console.error('Upload error:', error);
+      console.error('Scan failed:', error);
+      setUploadError(error.response?.data?.error || 'Scan failed. Please try again.');
     } finally {
       setIsScanning(false);
     }
   };
 
   const handleViewResults = () => {
-    const uploadId = localStorage.getItem('currentUploadId');
-    navigate('/results', { 
-      state: { 
-        files, 
-        analysisName, 
-        scanType,
-        uploadId 
-      } 
-    });
+    navigate('/results', { state: { uploadId, analysisName, scanType } });
   };
 
   const handleNavigateToHistory = () => {
@@ -249,10 +271,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       transition: 'background-color 0.3s',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      ':hover': {
-        backgroundColor: '#34495e'
-      }
+      textOverflow: 'ellipsis'
     },
     activeMenuItem: {
       backgroundColor: '#1abc9c',
@@ -267,9 +286,6 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       width: '100%',
       textAlign: 'center',
       transition: 'background-color 0.3s',
-      ':hover': {
-        backgroundColor: '#c0392b'
-      },
       marginTop: 'auto',
       borderBottomLeftRadius: '4px'
     },
@@ -283,7 +299,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: '15px 20px',
-      backgroundColor: '#3498db',
+      backgroundColor: '#347adbff',
       color: 'white',
       boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
     },
@@ -310,10 +326,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       fontSize: '16px',
       fontWeight: 'bold',
       transition: 'all 0.3s',
-      backgroundColor: '#ecf0f1',
-      ':hover': {
-        transform: 'scale(1.05)'
-      }
+      backgroundColor: '#ecf0f1'
     },
     activeScanType: {
       backgroundColor: '#1abc9c',
@@ -323,7 +336,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       backgroundColor: 'white',
       borderRadius: '5px',
       padding: '30px',
-      boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+      boxShadow: '0 2px 5px rgba(0,0,0,0.1)', 
       marginBottom: '20px',
       textAlign: 'center'
     },
@@ -345,20 +358,16 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       position: 'relative'
     },
     uploadButton: {
-      backgroundColor: '#3498db',
+      backgroundColor: '#408df9ff',
       color: 'white',
       border: 'none',
       padding: '10px 20px',
       borderRadius: '5px',
       cursor: 'pointer',
       fontSize: '16px',
-      transition: 'background-color 0.3s',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px',
-      ':hover': {
-        backgroundColor: '#2980b9'
-      }
+      gap: '8px'
     },
     scanControls: {
       display: 'flex',
@@ -380,11 +389,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       border: 'none',
       borderRadius: '5px',
       cursor: 'pointer',
-      fontSize: '16px',
-      transition: 'background-color 0.3s',
-      ':hover': {
-        backgroundColor: '#16a085'
-      }
+      fontSize: '16px'
     },
     loadingIndicator: {
       display: 'flex',
@@ -402,11 +407,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       fontSize: '16px',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px',
-      transition: 'background-color 0.3s',
-      ':hover': {
-        backgroundColor: '#16a085'
-      }
+      gap: '8px'
     },
     fileList: {
       width: '100%',
@@ -465,13 +466,13 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
   return (
     <div style={styles.dashboard}>
       <GlobalStyles />
-      
+
       {/* Sidebar */}
       <div style={styles.sidebar}>
         <button style={styles.sidebarCollapseButton} onClick={toggleSidebar}>
           {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
         </button>
-        
+
         <div>
           <div style={styles.logo}>{sidebarCollapsed ? 'P' : 'PLAGIO'}</div>
           <div style={{ ...styles.menuItem, ...styles.activeMenuItem }}>
@@ -481,7 +482,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
             {sidebarCollapsed ? 'M' : 'My Scans'}
           </div>
         </div>
-        
+
         <button style={styles.logoutButton} onClick={handleLogout}>
           {sidebarCollapsed ? 'L' : 'Logout'}
         </button>
@@ -491,7 +492,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
       <div style={styles.mainContent}>
         <div style={styles.topBar}>
           <div></div>
-          <div style={styles.userEmail}>{userEmail}</div>
+          <span style={styles.userEmail}>{userEmail}</span>
         </div>
 
         <div style={styles.contentArea}>
@@ -518,34 +519,34 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
 
           <div style={styles.uploadSection}>
             <h2 style={styles.uploadHeading}>Upload Files</h2>
-            <div 
+            <div
               style={styles.uploadBox}
               onDragEnter={handleDrag}
               onDragOver={handleDrag}
               onDragLeave={handleDrag}
               onDrop={handleDrop}
             >
-              <button 
+              <button
                 style={styles.uploadButton}
                 onClick={() => document.getElementById('fileInput').click()}
               >
                 <FiUpload style={styles.uploadIcon} />
                 Browse Files
               </button>
-              <input 
+              <input
                 id="fileInput"
-                type="file" 
-                multiple 
-                style={{ display: 'none' }} 
+                type="file"
+                multiple
+                style={{ display: 'none' }}
                 onChange={handleFileChange}
               />
-              
+
               {files.length > 0 ? (
                 <div style={styles.fileList}>
                   {files.map((file, index) => (
                     <div key={index} style={styles.fileItem}>
                       <span>{file.name}</span>
-                      <button 
+                      <button
                         style={styles.deleteButton}
                         onClick={() => handleDeleteFile(index)}
                         title="Remove file"
@@ -557,8 +558,8 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
                 </div>
               ) : (
                 <div style={styles.noFilesText}>
-                  {scanType 
-                    ? `No files selected. Allowed: ${scanType === 'code' ? '.c, .cpp, .py' : '.txt, .docx'}`
+                  {scanType
+                    ? `No files selected. Allowed: ${scanType === 'code' ? '.c, .cpp, .py, .java' : '.txt, .docx, .pdf'}`
                     : 'Please select a scan type first'}
                 </div>
               )}
@@ -582,7 +583,7 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
               />
               {analysisError && <div style={styles.analysisErrorMessage}>{analysisError}</div>}
             </div>
-            
+
             {isScanning ? (
               <div style={styles.loadingIndicator}>
                 <LoadingSpinner />
@@ -592,11 +593,11 @@ const PlagioDashboard = ({ defaultScanType = null }) => {
                 <FiCheckCircle /> View Results
               </button>
             ) : (
-              <button 
+              <button
                 style={styles.scanButton}
                 onClick={handleScan}
                 disabled={
-                  (scanType === 'text' && files.length < 2) || 
+                  (scanType === 'text' && files.length < 2) ||
                   (scanType === 'code' && files.length < 2) ||
                   (scanType === 'ai' && files.length < 1)
                 }
