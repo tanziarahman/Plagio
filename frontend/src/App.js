@@ -1,24 +1,43 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+import About from './pages/About';
+import Register from './pages/Register';
+import Login from './pages/Login';
+import PlagioDashboard from './pages/PlagioDashboard';
+import ResultsPage from './pages/ResultsPage';
+import HistoryPage from './pages/HistoryPage';
+import FileComparisonPage from './pages/FileComparisonPage';
+import AiPage from './pages/AiPage';
+
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/plagio-dashboard" element={<PlagioDashboard />} />
+        <Route 
+          path="/plagio-dashboard/text" 
+          element={<PlagioDashboard defaultScanType="text" />} 
+        />
+        <Route 
+          path="/plagio-dashboard/code" 
+          element={<PlagioDashboard defaultScanType="code" />} 
+        />
+        <Route 
+          path="/plagio-dashboard/ai" 
+          element={<PlagioDashboard defaultScanType="ai" />} 
+        />
+        <Route path="/results" element={<ResultsPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/file-comparison" element={<FileComparisonPage />} />
+        <Route path="/ai-analysis" element={<AiPage/>} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
