@@ -152,7 +152,7 @@ export default function About() {
                 <div style={styles.stepContent}>
                   <h3 style={styles.stepTitle}>Upload Code Files</h3>
                   <p style={styles.stepText}>
-                    Upload multiple .c, .cpp, .py, or other source code files.
+                    Upload multiple .c, .cpp, .py, .java source code files.
                   </p>
                 </div>
               </div>

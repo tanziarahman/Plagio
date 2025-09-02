@@ -65,7 +65,7 @@ export default function Home() {
           <div style={styles.featureBox}>
             <div style={styles.featureIcon}>💻</div>
             <h3 style={styles.featureTitle}>Code Detection</h3>
-            <p style={styles.featureText}>Specialized detection for source code to identify plagiarism in programming assignments.</p>
+            <p style={styles.featureText}>Specialized detection for source code to identify plagiarism in multiple programming languages.</p>
           </div>
           <div style={styles.featureBox}>
             <div style={styles.featureIcon}>🤖</div>
