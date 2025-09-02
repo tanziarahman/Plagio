@@ -16,7 +16,7 @@ auth_bp = Blueprint('auth', __name__)
 
 # Initialize LoginManager
 login_manager = LoginManager()
-login_manager.login_view = 'auth.login'  # Use blueprint name prefix
+login_manager.login_view = 'auth.login'  
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -85,7 +85,7 @@ def login():
 
     user = User.query.filter_by(email=email).first()
     if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        login_user(user, remember=remember)  # Fixed: login the found user, not current_user
+        login_user(user, remember=remember)  
         return jsonify({'message': 'Login successful'}), 200
 
     return jsonify({'message': 'Invalid credentials. Try again.'}), 401
@@ -163,7 +163,7 @@ def send_code():
             sender=current_app.config['MAIL_DEFAULT_SENDER'],
             recipients=[email]
         )
-        msg.body = f'Your verification code is: {code} (valid for 5 minutes)'
+        msg.body = f'Thank you for using Plagio! Your email verification code is: {code} (valid for 5 minutes)'
         mail.send(msg)
         return jsonify({'message': 'Verification code sent'}), 200
     except Exception as e:
