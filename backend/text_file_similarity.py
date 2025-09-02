@@ -1,12 +1,13 @@
 import os
 import requests
 from docx import Document
+import PyPDF2
 
-WINSTON_API_KEY = "Je69Q3GK3fj18AHWNwRKFqxWuLH025HbeIeObMH1abf78c0c"
+# WINSTON_API_KEY = "Je69Q3GK3fj18AHWNwRKFqxWuLH025HbeIeObMH1abf78c0c"  #THIS IS TEST
+WINSTON_API_KEY="jYJhurNAnqhFd7A0wGyjBFOpnK5CeA2WKQksRKK3c4a62a3b"  #THIS IS FOR PLAGIO
 WINSTON_API_URL = "https://api.gowinston.ai/v2/text-compare"
 
 
-# Helpers for extracting text
 
 def read_txt(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
@@ -18,16 +19,26 @@ def read_docx(file_path):
     return "\n".join([para.text for para in doc.paragraphs])
 
 
+def read_pdf(file_path):
+    text = ""
+    with open(file_path, "rb") as f:
+        reader = PyPDF2.PdfReader(f)
+        for page in reader.pages:
+            text += (page.extract_text() or "") + "\n"
+    return text.strip()
+
+
 def extract_text(file_path):
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".txt":
         return read_txt(file_path)
     elif ext == ".docx":
         return read_docx(file_path)
+    elif ext == ".pdf":  
+        return read_pdf(file_path)
     else:
         raise ValueError(f"Unsupported file type: {ext}")
 
-# compare two files
 
 
 def compare_file_pair(file1_path, file2_path):

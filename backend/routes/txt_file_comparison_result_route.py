@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from models import db, Upload, File, Comparison, MatchItem
 import os
 from docx import Document
+import PyPDF2
 
 txt_comparison_result_bp = Blueprint('txt-comparison-result', __name__)
 
@@ -20,8 +21,19 @@ def extract_text_from_path(file_path):
             return "\n".join([para.text for para in doc.paragraphs])
         except Exception:
             return ""
+    elif ext == '.pdf':
+        try:
+            text = ""
+            with open(file_path, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                for page in reader.pages:
+                    text += (page.extract_text() or "") + "\n"
+            return text.strip()
+        except Exception:
+            return ""
     else:
         return ""
+
 
 @txt_comparison_result_bp.route('/comparison', methods=['GET'])
 @login_required
@@ -81,5 +93,3 @@ def get_comparison_data():
         'comparisons': comp_list,
         'all_files': all_files
     }), 200
-
-

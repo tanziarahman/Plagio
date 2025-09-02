@@ -97,8 +97,8 @@ def perform_comparison():
                     'file2_name': file2.original_name,
                     'similarity_file1_to_file2': comparison_result['file1']['similarity_percentage'],
                     'similarity_file2_to_file1': comparison_result['file2']['similarity_percentage'],
-                    'matches_file1_to_file2': comparison_result['first_text']['matches'],
-                    'matches_file2_to_file1': comparison_result['second_text']['matches'],
+                    'matches_file1_to_file2': comparison_result['file1']['matches'],
+                    'matches_file2_to_file1': comparison_result['file2']['matches'],
                 })
 
         db.session.commit()
