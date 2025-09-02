@@ -1,8 +1,10 @@
 import os
 import requests
 from docx import Document
+import PyPDF2
 
-SAPLING_API_KEY = "URV8GPGB28ZQV5DW1MB5N5CD85Z6363B"
+# SAPLING_API_KEY = "URV8GPGB28ZQV5DW1MB5N5CD85Z6363B"  # for testing
+SAPLING_API_KEY = "3OLG5E9V3DU2WCIBPIFJBTNIC0UL6D38"  # plagio
 SAPLING_API_URL = "https://api.sapling.ai/api/v1/aidetect"
 
 def read_txt(file_path):
@@ -13,12 +15,22 @@ def read_docx(file_path):
     doc = Document(file_path)
     return "\n".join([p.text for p in doc.paragraphs])
 
+def read_pdf(file_path):
+    text = ""
+    with open(file_path, "rb") as f:
+        reader = PyPDF2.PdfReader(f)
+        for page in reader.pages:
+            text += (page.extract_text() or "") + "\n"
+    return text.strip()
+
 def extract_text(file_path):
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".txt":
         return read_txt(file_path)
     elif ext == ".docx":
         return read_docx(file_path)
+    elif ext == ".pdf":  
+        return read_pdf(file_path)
     else:
         raise ValueError(f"Unsupported file type: {ext}")
 

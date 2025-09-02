@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from models import db, Upload, File, AIDetectionResult, AvgSimilarity
 from datetime import datetime
 import os
-from ai import detect_ai_generated  
+from ai import detect_ai_generated, extract_text  
 
 ai_detect_bp = Blueprint("ai-detect", __name__)
 
@@ -32,7 +32,37 @@ def detect_ai():
         for file in files:
             if not os.path.exists(file.file_path):
                 continue
+            
+            text = extract_text(file.file_path)
+            if not text.strip():
+                # Save placeholder AI detection result
+                ai_result = AIDetectionResult(
+                    file_id=file.file_id,
+                    ai_percentage=None,
+                    score_html="⚠️ No readable text found in file.",
+                    detected_at=datetime.utcnow()
+                )
+                db.session.add(ai_result)
+                db.session.flush()
 
+                # Save placeholder in AvgSimilarity
+                avg_sim = AvgSimilarity(
+                    upload_id=upload.upload_id,
+                    file_id=file.file_id,
+                    average_similarity=None,
+                    calculated_at=datetime.utcnow()
+                )
+                db.session.add(avg_sim)
+
+                results.append({
+                    "file_id": file.file_id,
+                    "file_name": file.original_name,
+                    "ai_percentage": None,
+                    "score_html": "⚠️ No readable text found in file."
+                })
+                continue
+
+            # Run AI detection
             detection = detect_ai_generated(file.file_path)
 
             # Save AI detection result
