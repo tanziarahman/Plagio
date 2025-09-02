@@ -36,7 +36,6 @@ def get_code_comparison_data():
             (Comparison.comparison_type == "code")
         ).all()
 
-        # If no comparisons found, return a message
         if not comparisons:
             return jsonify({
                 'error': 'No comparisons found for this upload.',
@@ -45,13 +44,28 @@ def get_code_comparison_data():
                 'comparisons': []
             }), 404
 
+        # Deduplicate comparisons: keep only the latest per (file1_id, file2_id) pair
+        unique_map = {}
+        for c in comparisons:
+            # Create an unordered pair key
+            pair_key = tuple(sorted([c.file1_id, c.file2_id]))
+            if pair_key not in unique_map:
+                unique_map[pair_key] = c
+            else:
+                # Keep the one with the latest checked_at (or overwrite if missing)
+                if (c.checked_at and 
+                    (not unique_map[pair_key].checked_at or c.checked_at > unique_map[pair_key].checked_at)):
+                    unique_map[pair_key] = c
+
+        deduped_comparisons = list(unique_map.values())
+
         result = {
             'upload_id': upload_id,
-            'total_comparisons': len(comparisons),
+            'total_comparisons': len(deduped_comparisons),
             'comparisons': []
         }
 
-        for c in comparisons:
+        for c in deduped_comparisons:
             # Safely fetch full file content
             try:
                 file1_code_full = fetch_full_code_from_file(c.file1.file_path)
