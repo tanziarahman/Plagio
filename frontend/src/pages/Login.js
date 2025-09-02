@@ -141,7 +141,7 @@ const styles = {
     maxWidth: '420px',
   },
   h3: {
-    color: '#4b3e84',
+    color: '#4b6ac6ff',
     fontWeight: '600',
     marginBottom: '24px',
     textAlign: 'center',
@@ -213,7 +213,7 @@ const styles = {
   },
   submitButton: {
     padding: '12px',
-    backgroundColor: '#5064a1ff',
+    backgroundColor: '#4b6ac6ff',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
@@ -231,7 +231,7 @@ const styles = {
     color: '#495057',
   },
   registerLinkText: {
-    color: '#764ba2',
+    color: '#4b6ac6ff',
     fontWeight: '500',
     textDecoration: 'none',
     ':hover': {

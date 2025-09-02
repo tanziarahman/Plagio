@@ -383,8 +383,8 @@ const handleSendCode = async (e) => {
                 style={{
                   ...styles.sendCodeButton,
                   backgroundColor: isCodeSent ? '#e9ecef' : '#f8f9fa',
-                  color: isCodeSent ? '#6c757d' : '#764ba2',
-                  borderColor: isCodeSent ? '#dee2e6' : '#764ba2',
+                  color: isCodeSent ? '#6c757d' : '#4b6ac6ff',
+                  borderColor: isCodeSent ? '#dee2e6' : '#4b6ac6ff',
                   cursor: isCodeSent ? 'not-allowed' : 'pointer'
                 }}
                 disabled={isCodeSent}
@@ -447,7 +447,7 @@ const styles = {
     maxWidth: '420px',
   },
   h3: {
-    color: '#4b3e84',
+    color: '#4b6ac6ff',
     fontWeight: '600',
     marginBottom: '24px',
     textAlign: 'center',
@@ -511,19 +511,19 @@ const styles = {
     padding: '0 16px',
     backgroundColor: '#f8f9fa',
     border: '1px solid #5064a1ff',
-    color: '#5064a1ff',
+    color: '#4b6ac6ff',
     borderRadius: '6px',
     fontWeight: '500',
     transition: 'all 0.2s',
     whiteSpace: 'nowrap',
     ':hover': {
-      backgroundColor: '#5064a1ff',
+      backgroundColor: '#4b6ac6ff',
       color: 'white',
     },
   },
   submitButton: {
     padding: '12px',
-    backgroundColor: '#5064a1ff',
+    backgroundColor: '#4b6ac6ff',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
@@ -546,7 +546,7 @@ const styles = {
     color: '#495057',
   },
   loginLink: {
-    color: '#5064a1ff',
+    color: '#4b6ac6ff',
     fontWeight: '500',
     textDecoration: 'none',
     ':hover': {
