@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, CheckConstraint,Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, CheckConstraint,Text
 from sqlalchemy.orm import relationship
 
 db = SQLAlchemy()
@@ -52,6 +52,28 @@ class File(db.Model):
 
     
     
+class MatchCode(db.Model):
+    __tablename__ = 'MatchCodes'
+
+    match_id = Column(Integer, primary_key=True, autoincrement=True)
+    comparison_id = Column(Integer, ForeignKey('Comparisons.comparison_id', ondelete='CASCADE'), nullable=False)
+    
+    file1_id = Column(Integer, ForeignKey('Files.file_id', ondelete='CASCADE'), nullable=False)
+    file1_start = Column(Integer, nullable=False)
+    file1_end = Column(Integer, nullable=False)
+    
+    file2_id = Column(Integer, ForeignKey('Files.file_id', ondelete='CASCADE'), nullable=False)
+    file2_start = Column(Integer, nullable=False)
+    file2_end = Column(Integer, nullable=False)
+    
+    comparison = relationship("Comparison", back_populates="match_codes")
+    file1 = relationship("File", foreign_keys=[file1_id])
+    file2 = relationship("File", foreign_keys=[file2_id])
+
+
+    
+
+
 
 class Comparison(db.Model):
     __tablename__ = 'Comparisons'
@@ -88,25 +110,6 @@ class AvgSimilarity(db.Model):
 
 
 
-class MatchCode(db.Model):
-    __tablename__ = 'MatchCodes'
-
-    match_id = Column(Integer, primary_key=True, autoincrement=True)
-    comparison_id = Column(Integer, ForeignKey('Comparisons.comparison_id', ondelete='CASCADE'), nullable=False)
-    
-    file1_id = Column(Integer, ForeignKey('Files.file_id', ondelete='CASCADE'), nullable=False)
-    file1_start = Column(Integer, nullable=False)
-    file1_end = Column(Integer, nullable=False)
-    
-    file2_id = Column(Integer, ForeignKey('Files.file_id', ondelete='CASCADE'), nullable=False)
-    file2_start = Column(Integer, nullable=False)
-    file2_end = Column(Integer, nullable=False)
-    
-    comparison = relationship("Comparison", back_populates="match_codes")
-    file1 = relationship("File", foreign_keys=[file1_id])
-    file2 = relationship("File", foreign_keys=[file2_id])
-
-
 
 class MatchItem(db.Model):
     __tablename__ = 'MatchItems'
@@ -134,5 +137,7 @@ class AIDetectionResult(db.Model):
     file = relationship("File", backref="ai_results")
 
 
+
+    
 
     
