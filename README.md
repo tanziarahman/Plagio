@@ -29,21 +29,28 @@ The system is built with Flask (backend), React (frontend), and SQLite (database
    git clone https://github.com/tanziarahman/Plagio.git
    cd Plagio
 
-2. Create and activate a virtual environment:
-   - python -m venv venv
-   - source venv/bin/activate   # On Linux/Mac
-   - venv\Scripts\activate      # On Windows
+Create and activate a virtual environment:
 
-3. Install dependencies:
-   pip install -r requirements.txt
+python -m venv venv
+source venv/bin/activate   # On Linux/Mac
+venv\Scripts\activate      # On Windows
 
-4. Run the Flask backend:
-   flask run
 
-5. Start the React frontend:
-   cd frontend
-   npm install
-   npm start
+Install dependencies:
+
+pip install -r requirements.txt
+
+
+Run the Flask backend:
+
+flask run
+
+
+Start the React frontend:
+
+cd client
+npm install
+npm start
 
 ## Requirements
 See requirements.txt for the full list of dependencies.
