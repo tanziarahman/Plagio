@@ -1,6 +1,6 @@
 # Plagio
 
-Plagio (also called PlagTrack) is a plagiarism detection tool that supports both text and code.  
+Plagio is a plagiarism detection tool that supports both text and code.  
 It includes AI content detection for text, highlights plagiarized lines, and allows users to view previous analyses for tracking.  
 
 The system is built with Flask (backend), React (frontend), and SQLite (database), and integrates with external APIs for accurate detection.
