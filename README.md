@@ -35,17 +35,14 @@ The system is built with Flask (backend), React (frontend), and SQLite (database
    source venv/bin/activate   # On Linux/Mac
    venv\Scripts\activate      # On Windows
 
-
 3. Install dependencies:
    ```bash
    pip install -r requirements.txt
-
 
 4. Run the Flask backend:
    ```bash
    cd backend
    flask run
-
 
 5. Start the React frontend:
    ```bash
