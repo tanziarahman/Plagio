@@ -7,8 +7,8 @@ The system is built with Flask (backend), React (frontend), and SQLite (database
 
 ## Features
 
-- 🔍 Text plagiarism detection with AI content checking  
-- 💻 Code plagiarism detection (using JPlag and Mosspy)  
+- 🔍 Text plagiarism detection with AI content checking (Sapling and Winston)
+- 💻 Code plagiarism detection (Mosspy)  
 - ✨ Highlighting of plagiarized lines in results  
 - 📊 View history of previous analyses  
 - 🗄️ Lightweight database storage with SQLite  
