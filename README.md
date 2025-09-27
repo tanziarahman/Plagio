@@ -19,7 +19,7 @@ The system is built with Flask (backend), React (frontend), and SQLite (database
 - **Backend:** Flask, Flask-SQLAlchemy, Flask-Login, Flask-Bcrypt  
 - **Frontend:** React  
 - **Database:** SQLite  
-- **External APIs:** JPlag API and others  
+- **External APIs:** Moss, Sapling and Winston  
 - **Libraries:** BeautifulSoup4, RapidFuzz, PyPDF2, python-docx, Mosspy, Requests  
 
 ## Installation
@@ -30,9 +30,9 @@ The system is built with Flask (backend), React (frontend), and SQLite (database
    cd Plagio
 
 2. Create and activate a virtual environment:
-   python -m venv venv
-   source venv/bin/activate   # On Linux/Mac
-   venv\Scripts\activate      # On Windows
+   - python -m venv venv
+   - source venv/bin/activate   # On Linux/Mac
+   - venv\Scripts\activate      # On Windows
 
 3. Install dependencies:
    pip install -r requirements.txt
@@ -50,16 +50,16 @@ See requirements.txt for the full list of dependencies.
 
 #### Key dependencies include:
 
-Flask 3.1.1
-Flask-SQLAlchemy 3.1.1
-Flask-Login 0.6.3
-Flask-Bcrypt 1.0.1
-React
-SQLite
-Mosspy 1.0.9
-RapidFuzz 3.13.0
-PyPDF2 3.0.1
-python-docx 1.2.0
+- Flask 3.1.1
+- Flask-SQLAlchemy 3.1.1
+- Flask-Login 0.6.3
+- Flask-Bcrypt 1.0.1
+- React
+- SQLite
+- Mosspy 1.0.9
+- RapidFuzz 3.13.0
+- PyPDF2 3.0.1
+- python-docx 1.2.0
 
 ## Usage
 - Upload one or more files (text or code).
